@@ -34,12 +34,8 @@
 
   /* ---------- LAYOUT ---------- */
   .app{min-height:100vh;display:flex;flex-direction:column}
-  .topbar{
-    display:flex;align-items:center;gap:24px;
-    padding:18px 32px;border-bottom:1px solid var(--border);
-    background:linear-gradient(180deg,#101010,#0D0D0D);
-    position:sticky;top:0;z-index:20;
-  }
+  .topbar{display:flex;align-items:center;border-bottom:1px solid var(--border);background:linear-gradient(180deg,#101010,#0D0D0D);position:sticky;top:0;z-index:20}
+  .topbar-inner{display:flex;align-items:center;gap:24px;max-width:1600px;width:100%;margin:0 auto;padding:18px 32px}
   .topbar .brand{display:flex;align-items:center;gap:14px}
   .logo-mark{
     width:46px;height:46px;border-radius:10px;
@@ -283,6 +279,7 @@
   <div class="app">
     <!-- TOPBAR -->
     <header class="topbar">
+      <div class="topbar-inner">
       <div class="brand">
         <div class="logo-mark"><img src="https://rtc.tatsuoacademy.com/wp-content/uploads/2025/09/LOGO-BORDO--300x156.png" alt="Tatsuo Academy" onerror="this.style.display='none';this.parentElement.textContent='TA'"></div>
         <div class="brand-text">
@@ -295,6 +292,7 @@
         <span><span class="live-dot"></span>Sincronizado</span>
         <span id="meta-time">—</span>
       </div>
+      </div>
     </header>
 
     <main>
@@ -304,6 +302,7 @@
           <h1>RELATÓRIO DE <span class="accent">CAMPANHAS</span></h1>
           <p>Investimento, custo por lead, custo por venda e progressão de pipeline em tempo real — segmentados por origem, qualificação e estágio comercial. <span id="spend-status" style="color:var(--dim);font-size:12px;display:block;margin-top:6px"></span></p>
         </div>
+      </div>
       <!-- FILTERS -->
       <div class="filters" id="filters">
         <div class="field">
