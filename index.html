@@ -188,7 +188,12 @@
   .origin-card .bar > span{display:block;height:100%;background:var(--tone,var(--primary));border-radius:2px;transition:width .8s cubic-bezier(.2,.8,.2,1)}
 
   /* ---------- TABLE ---------- */
-  .table-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
+  .table-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border);scrollbar-width:thin;scrollbar-color:#2A2A2A #0D0D0D}
+  .table-wrap::-webkit-scrollbar{height:10px;width:10px;background:#0D0D0D}
+  .table-wrap::-webkit-scrollbar-track{background:#0D0D0D;border-top:1px solid var(--border)}
+  .table-wrap::-webkit-scrollbar-thumb{background:#2A2A2A;border-radius:6px;border:2px solid #0D0D0D}
+  .table-wrap::-webkit-scrollbar-thumb:hover{background:var(--primary)}
+  .table-wrap::-webkit-scrollbar-corner{background:#0D0D0D}
   table{width:100%;border-collapse:collapse;font-size:13px;min-width:640px}
   thead th{
     text-align:left;padding:14px 16px;font-size:10px;letter-spacing:.2em;
@@ -252,6 +257,23 @@
   .error-card button:hover{background:var(--accent);border-color:var(--accent)}
 
   .empty-state{padding:40px 20px;text-align:center;color:var(--muted);font-size:13px}
+
+  /* ---------- LEADS TABLE ---------- */
+  #leads-table{min-width:1200px}
+  #leads-table thead th{position:sticky;top:0;background:#181818;z-index:1}
+  #leads-table tbody td{font-size:12.5px;color:var(--text);white-space:nowrap}
+  #leads-table tbody td.wrap{white-space:normal;max-width:220px;line-height:1.4}
+  #leads-table tbody td.dim{color:var(--muted)}
+  #leads-table tbody td .lead-name{font-weight:500;color:#fff}
+  #leads-table tbody td .phone{font-variant-numeric:tabular-nums;font-family:'Outfit',sans-serif}
+  #leads-table .stage-chip{font-size:10.5px}
+  .table-foot{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-top:1px solid var(--border);background:#121212;gap:14px;flex-wrap:wrap}
+  .table-info{font-size:12px;color:var(--muted)}
+  .table-pager{display:flex;align-items:center;gap:10px}
+  .table-pager button{background:var(--bg-2);border:1px solid var(--border);color:var(--text);padding:8px 14px;border-radius:7px;font-family:inherit;font-size:12px;letter-spacing:.08em;cursor:pointer;transition:border-color .15s,background .15s,color .15s}
+  .table-pager button:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+  .table-pager button:disabled{opacity:.35;cursor:not-allowed}
+  .table-pager .page-status{font-size:12px;color:var(--muted);min-width:88px;text-align:center;font-variant-numeric:tabular-nums}
 
   /* ---------- RESPONSIVE ---------- */
   @media (max-width: 1100px){
@@ -400,6 +422,48 @@
               <div class="hint">Leads presentes em cada etapa agora — empilhado por origem</div>
             </div>
             <div class="chart-wrap tall" id="chart-pipeline-wrap"><canvas id="chart-pipeline"></canvas></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- BLOCK 3 — LEADS TABLE -->
+      <section class="section" id="block-3">
+        <div class="section-head">
+          <div>
+            <div class="label">Bloco 03 — Lista de Leads</div>
+            <h2>LEADS DETALHADOS</h2>
+          </div>
+          <div class="desc">Lista paginada com 20 leads por página, respeitando todos os filtros aplicados acima.</div>
+        </div>
+        <div class="panel" style="padding:0;overflow:hidden">
+          <div class="table-wrap">
+            <table id="leads-table">
+              <thead>
+                <tr>
+                  <th>Nome do lead</th>
+                  <th>Telefone</th>
+                  <th>Segmento</th>
+                  <th class="num">Funcionários</th>
+                  <th>Funil</th>
+                  <th>Etapa</th>
+                  <th class="num">Valor</th>
+                  <th>Canal</th>
+                  <th>Campanha</th>
+                  <th>Medium</th>
+                  <th>Conteúdo</th>
+                  <th>Criação</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="table-foot">
+            <div class="table-info" id="table-info">—</div>
+            <div class="table-pager">
+              <button id="page-prev" type="button">‹ Anterior</button>
+              <span class="page-status" id="page-status">1 / 1</span>
+              <button id="page-next" type="button">Próximo ›</button>
+            </div>
           </div>
         </div>
       </section>
@@ -602,9 +666,21 @@ function loadData(){
           const firstCamp = r.first_atribution_campaign || '';
           const lastCamp  = r.last_atribution_campaign  || '';
           const source    = classifySource(lastMed, firstMed, lastCamp, firstCamp);
+          // helper p/ ler cabeçalho com múltiplos nomes possíveis
+          const pick = (...keys) => {
+            for(const k of keys){
+              if(r[k] !== undefined && r[k] !== null && String(r[k]).trim() !== '') return String(r[k]).trim();
+            }
+            return '';
+          };
           return {
             id: r.id_contato,
-            nome: r.nome_contato,
+            nome: pick('nome_lead','nome_oportunidade','nome_contato','Nome','nome'),
+            telefone: pick('telefone','Telefone','phone','whatsapp','Whatsapp','WhatsApp','celular','Celular'),
+            segmento: pick('segmento_empresa','segmento','Segmento','segmento_da_empresa','segmento_contato','segmento_contato_empresa','setor','Setor'),
+            canal:    pick('fonte_oportunidade','canal','Canal','first_atribution_source','last_atribution_source','source'),
+            funcionarios: pick('nro_funcionarios','n_funcionarios','numero_funcionarios','funcionarios','qtd_funcionarios','quantidade_funcionarios'),
+            conteudo: pick('first_atribution_content','last_atribution_content','conteudo','Conteúdo','content'),
             tag,
             tagsRaw: tagRaw,
             stage: normStage(r.estagio_pipeline||''),
@@ -683,6 +759,7 @@ function bootstrap(){
   document.getElementById('meta-time').textContent =
     'Atualizado ' + now.toLocaleDateString('pt-BR') + ' • ' + now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
 
+  wireTablePager();
   render();
 
   // hide loader
@@ -789,6 +866,7 @@ function spendByTag(){
    RENDER
 ========================================================= */
 function render(){
+  TABLE_PAGE = 1; // qualquer mudança de filtro reseta para página 1
   const data = getFiltered();
   renderSummary(data);
   renderKPIs(data);
@@ -796,6 +874,100 @@ function render(){
   renderOriginSummary(data);
   renderPipelineChart(data);
   renderFunnel(data);
+  renderLeadsTable(data);
+}
+
+/* =========================================================
+   LEADS TABLE (paginada)
+========================================================= */
+let TABLE_PAGE = 1;
+const TABLE_PAGE_SIZE = 20;
+
+function fmtPhone(p){
+  if(!p) return '';
+  const d = String(p).replace(/\D/g,'');
+  if(d.length === 13) return `+${d.slice(0,2)} (${d.slice(2,4)}) ${d.slice(4,9)}-${d.slice(9)}`;
+  if(d.length === 12) return `+${d.slice(0,2)} (${d.slice(2,4)}) ${d.slice(4,8)}-${d.slice(8)}`;
+  if(d.length === 11) return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
+  if(d.length === 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
+  return String(p);
+}
+function fmtDateBR(d){
+  if(!d) return '—';
+  return d.toLocaleDateString('pt-BR') + ' ' + d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+}
+function esc(s){
+  return String(s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+function renderLeadsTable(data){
+  const tbody = document.querySelector('#leads-table tbody');
+  const info = document.getElementById('table-info');
+  const status = document.getElementById('page-status');
+  const prev = document.getElementById('page-prev');
+  const next = document.getElementById('page-next');
+
+  // ordena por data desc (mais recentes primeiro)
+  const rows = [...data].sort((a,b)=>{
+    const ta = a.dt ? a.dt.getTime() : 0;
+    const tb = b.dt ? b.dt.getTime() : 0;
+    return tb - ta;
+  });
+  const total = rows.length;
+  const pageCount = Math.max(1, Math.ceil(total / TABLE_PAGE_SIZE));
+  if(TABLE_PAGE > pageCount) TABLE_PAGE = pageCount;
+  if(TABLE_PAGE < 1) TABLE_PAGE = 1;
+
+  const start = (TABLE_PAGE - 1) * TABLE_PAGE_SIZE;
+  const end   = Math.min(start + TABLE_PAGE_SIZE, total);
+  const slice = rows.slice(start, end);
+
+  if(!total){
+    tbody.innerHTML = `<tr><td colspan="12"><div class="empty-state">Nenhum lead corresponde aos filtros aplicados.</div></td></tr>`;
+    info.textContent = '0 leads';
+    status.textContent = '0 / 0';
+    prev.disabled = true; next.disabled = true;
+    return;
+  }
+
+  tbody.innerHTML = slice.map(r => {
+    const stageColor = STAGE_COLOR[r.stage] || '#5A6B7A';
+    return `
+      <tr>
+        <td><span class="lead-name">${esc(r.nome) || '—'}</span></td>
+        <td><span class="phone">${esc(fmtPhone(r.telefone)) || '<span class="dim">—</span>'}</span></td>
+        <td class="wrap">${esc(r.segmento) || '<span class="dim">—</span>'}</td>
+        <td class="num">${esc(r.funcionarios) || '<span class="dim">—</span>'}</td>
+        <td>${esc(r.pipeline) || '<span class="dim">—</span>'}</td>
+        <td><span class="stage-chip"><span class="dot" style="background:${stageColor}"></span>${esc(r.stage) || '—'}</span></td>
+        <td class="num">${r.valor ? fmtBRL(r.valor) : '<span class="dim">—</span>'}</td>
+        <td>${esc(r.canal) || '<span class="dim">—</span>'}</td>
+        <td class="wrap">${esc(r.campaign) || '<span class="dim">—</span>'}</td>
+        <td>${esc(r.lastMed || r.firstMed) || '<span class="dim">—</span>'}</td>
+        <td class="wrap">${esc(r.conteudo) || '<span class="dim">—</span>'}</td>
+        <td class="dim">${fmtDateBR(r.dt)}</td>
+      </tr>
+    `;
+  }).join('');
+
+  info.textContent = `${fmtNum(start+1)}–${fmtNum(end)} de ${fmtNum(total)} leads`;
+  status.textContent = `${TABLE_PAGE} / ${pageCount}`;
+  prev.disabled = TABLE_PAGE <= 1;
+  next.disabled = TABLE_PAGE >= pageCount;
+}
+
+function wireTablePager(){
+  const prev = document.getElementById('page-prev');
+  const next = document.getElementById('page-next');
+  if(!prev || !next || prev.dataset.wired) return;
+  prev.dataset.wired = '1';
+  next.dataset.wired = '1';
+  prev.addEventListener('click', ()=>{
+    if(TABLE_PAGE > 1){ TABLE_PAGE--; renderLeadsTable(getFiltered()); }
+  });
+  next.addEventListener('click', ()=>{
+    TABLE_PAGE++; renderLeadsTable(getFiltered());
+  });
 }
 
 function applyFilter(id, value){
@@ -1289,8 +1461,8 @@ function renderFunnel(data){
   wrap.appendChild(note);
 }
 
-/* ---------- TABLE ---------- */
-function renderTable(data){
+/* ---------- TABLE (legacy, não usada) ----------
+function renderTableLegacy(data){
   const tbody = document.querySelector('#pipeline-table tbody');
   tbody.innerHTML = '';
   const sources = [...new Set(data.map(r=>r.source).filter(Boolean))].sort((a,b)=>{
@@ -1326,6 +1498,7 @@ function renderTable(data){
     tbody.appendChild(tr);
   }
 }
+*/
 
 /* =========================================================
    START
