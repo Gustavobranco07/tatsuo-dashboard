@@ -536,6 +536,7 @@
                   <th class="num">Funcionários</th>
                   <th>Funil</th>
                   <th>Etapa</th>
+                  <th>Classificação</th>
                   <th class="num">Valor</th>
                   <th>Canal</th>
                   <th>Campanha</th>
@@ -1285,7 +1286,7 @@ function renderLeadsTable(data){
   const slice = rows.slice(start, end);
 
   if(!total){
-    tbody.innerHTML = `<tr><td colspan="12"><div class="empty-state">Nenhum lead corresponde aos filtros aplicados.</div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="13"><div class="empty-state">Nenhum lead corresponde aos filtros aplicados.</div></td></tr>`;
     info.textContent = '0 leads';
     status.textContent = '0 / 0';
     prev.disabled = true; next.disabled = true;
@@ -1302,6 +1303,7 @@ function renderLeadsTable(data){
         <td class="num">${esc(r.funcionarios) || '<span class="dim">—</span>'}</td>
         <td>${esc(r.pipeline) || '<span class="dim">—</span>'}</td>
         <td><span class="stage-chip"><span class="dot" style="background:${stageColor}"></span>${esc(r.stage) || '—'}</span></td>
+        <td>${TAG_ORDER.includes(r.tag) ? `<span class="stage-chip" title="${esc(TAG_DESC[r.tag]||'')}"><span class="dot" style="background:${TAG_COLOR[r.tag]}"></span>${esc(r.tag)}</span>` : '<span class="dim">—</span>'}</td>
         <td class="num">${r.valor ? fmtBRL(r.valor) : '<span class="dim">—</span>'}</td>
         <td>${esc(r.canal) || '<span class="dim">—</span>'}</td>
         <td class="wrap">${esc(r.campaign) || '<span class="dim">—</span>'}</td>
