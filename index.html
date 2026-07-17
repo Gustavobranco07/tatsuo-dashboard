@@ -74,8 +74,11 @@
   .filters{
     background:var(--card);border:1px solid var(--border);border-radius:14px;
     padding:18px 20px;margin-bottom:24px;
-    display:grid;grid-template-columns:repeat(6, minmax(0,1fr)) auto;gap:14px;align-items:end;
+    display:grid;grid-template-columns:repeat(4, minmax(0,1fr));gap:14px;align-items:end;
   }
+  .filters .field-periodo{grid-column:span 2}
+  .filters .clear-btn{grid-column:4;grid-row:3;justify-self:end}
+  .filters .field-criativo{grid-column:4;grid-row:2}
   .field{display:flex;flex-direction:column;gap:6px;min-width:0}
   .field label{font-size:10px;letter-spacing:.2em;color:var(--muted);text-transform:uppercase;white-space:normal;line-height:1.35;min-height:1em;word-break:break-word}
   .field input:not([type=checkbox]):not([type=radio]), .field select{
@@ -258,6 +261,36 @@
 
   .empty-state{padding:40px 20px;text-align:center;color:var(--muted);font-size:13px}
 
+  /* ---------- CREATIVES BLOCK ---------- */
+  .creative-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px}
+  .ckpi{background:var(--card);padding:14px 16px}
+  .ckpi .ck-label{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+  .ckpi .ck-val{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:.02em;line-height:1}
+  .ckpi .ck-sub{font-size:10.5px;color:var(--dim);margin-top:4px}
+  .goalbox{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:16px;flex-wrap:wrap}
+  .goalbox label{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+  .goalbox input{background:var(--bg-2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;font-family:inherit;font-size:14px;font-weight:600;width:110px}
+  .goalbox input:focus{outline:none;border-color:var(--accent)}
+  .goalbox .note{font-size:11px;color:var(--dim);flex:1;min-width:200px}
+  .pill{font-size:10.5px;font-weight:700;letter-spacing:.04em;padding:4px 10px;border-radius:999px;display:inline-block;white-space:nowrap}
+  .pill.esc{color:#3FB37F;background:rgba(63,179,127,.14)}
+  .pill.obs{color:#E8C547;background:rgba(232,197,71,.12)}
+  .pill.kill{color:#E5484D;background:rgba(229,72,77,.14)}
+  .pill.none{color:var(--muted);background:rgba(255,255,255,.05)}
+  .trap{color:#E5484D;font-weight:800}
+  .subpct{font-size:10.5px;color:var(--dim);font-weight:400;margin-left:3px}
+  .level-toggle{display:flex;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-left:auto}
+  .level-toggle button{background:var(--bg-2);border:none;color:var(--muted);padding:8px 16px;font-family:inherit;font-size:11px;letter-spacing:.12em;text-transform:uppercase;cursor:pointer;transition:background .15s,color .15s}
+  .level-toggle button + button{border-left:1px solid var(--border)}
+  .level-toggle button.active{background:var(--primary);color:#fff;font-weight:600}
+  .cmp-check{width:15px;height:15px;accent-color:var(--accent);cursor:pointer}
+  .win{color:#3FB37F;font-weight:800}
+  .lose{color:#E5484D;font-weight:800}
+  .cmp-insight{margin:14px 18px 0;padding:12px 14px;border:1px solid rgba(63,179,127,.35);background:rgba(63,179,127,.08);border-radius:10px;font-size:13px;color:var(--text);line-height:1.5}
+  .cmp-insight b{color:#3FB37F}
+  #creative-compare .table-wrap{border:none;border-radius:0;margin-top:14px}
+  #compare-table th.num, #compare-table td.num{text-align:right}
+
   /* ---------- LEADS TABLE ---------- */
   #leads-table{min-width:1200px}
   #leads-table thead th{position:sticky;top:0;background:#181818;z-index:1}
@@ -278,7 +311,9 @@
   /* ---------- RESPONSIVE ---------- */
   @media (max-width: 1100px){
     .filters{grid-template-columns:repeat(2,1fr)}
-    .filters .clear-btn{grid-column:1/-1;justify-content:center}
+    .filters .field-periodo{grid-column:span 2}
+    .filters .field-criativo{grid-column:auto;grid-row:auto}
+    .filters .clear-btn{grid-column:1/-1;grid-row:auto;justify-content:center;justify-self:stretch}
     .kpi-grid{grid-template-columns:1fr 1fr}
     .two-col{grid-template-columns:1fr}
     .origin-grid{grid-template-columns:1fr}
@@ -327,7 +362,7 @@
       </div>
       <!-- FILTERS -->
       <div class="filters" id="filters">
-        <div class="field">
+        <div class="field field-periodo">
           <label>Período</label>
           <div class="field-date">
             <input type="date" id="f-start" />
@@ -339,20 +374,24 @@
           <div id="f-pipeline" class="multi-select"></div>
         </div>
         <div class="field">
-          <label>Campanha</label>
-          <div id="f-camp" class="multi-select"></div>
+          <label>Estágio do Pipeline</label>
+          <div id="f-stage" class="multi-select"></div>
         </div>
         <div class="field">
           <label>Tag</label>
           <div id="f-tag" class="multi-select"></div>
         </div>
         <div class="field">
-          <label>Estágio do Pipeline</label>
-          <div id="f-stage" class="multi-select"></div>
-        </div>
-        <div class="field">
           <label>Origem</label>
           <div id="f-source" class="multi-select"></div>
+        </div>
+        <div class="field">
+          <label>Campanha</label>
+          <div id="f-camp" class="multi-select"></div>
+        </div>
+        <div class="field field-criativo">
+          <label>Criativo</label>
+          <div id="f-creative" class="multi-select"></div>
         </div>
         <button class="clear-btn" id="clear-btn"><span class="x">×</span> Limpar filtros</button>
       </div>
@@ -389,7 +428,6 @@
             <h3>Comparativo por tag</h3>
             <div class="legend">
               <div class="legend-item"><span class="sw" style="background:#C0392B"></span>Leads</div>
-              <div class="legend-item"><span class="sw" style="background:#E8C547"></span>Custo / lead</div>
             </div>
           </div>
           <div class="chart-wrap"><canvas id="chart-tags"></canvas></div>
@@ -426,11 +464,63 @@
         </div>
       </section>
 
+      <!-- BLOCK 3 — CRIATIVOS -->
+      <section class="section" id="block-creatives">
+        <div class="section-head">
+          <div>
+            <div class="label">Bloco 03 — Performance de Criativos</div>
+            <h2>PERFORMANCE POR CRIATIVO</h2>
+          </div>
+          <div class="desc">Agrupado por <code>last_atribution_content</code>, com gasto real por anúncio (coluna <code>anuncio</code> da aba gasto_campanha). Respeita os filtros do topo.</div>
+        </div>
+        <div class="creative-kpis" id="creative-kpis"></div>
+        <div class="goalbox">
+          <label>Meta de CPL qualificado</label>
+          <input type="number" id="cplq-goal" min="0" step="10">
+          <span class="note">Define o status Escalar / Observar / Matar — recalcula ao vivo. CPL qualificado = investido ÷ (MQL + Q-MQL).</span>
+          <div class="level-toggle" id="level-toggle">
+            <button type="button" data-level="creative" class="active">Criativos</button>
+            <button type="button" data-level="campaign">Campanhas</button>
+          </div>
+        </div>
+        <div class="panel" style="padding:0;overflow:hidden">
+          <div class="table-wrap">
+            <table id="creatives-table">
+              <thead>
+                <tr>
+                  <th></th>
+                  <th data-sort="creative" id="th-level">Criativo</th>
+                  <th class="num" data-sort="invest">Investido</th>
+                  <th class="num" data-sort="leads">Leads</th>
+                  <th class="num" data-sort="mql">MQL</th>
+                  <th class="num" data-sort="qmql">QMQL</th>
+                  <th class="num" data-sort="nmql">NMQL</th>
+                  <th class="num" data-sort="cpl">CPL</th>
+                  <th class="num" data-sort="cplQual">CPL qualif.</th>
+                  <th class="num" data-sort="apres">Apres. agendada</th>
+                  <th class="num" data-sort="vendas">Vendas</th>
+                  <th class="num" data-sort="convVenda">Apres. → Venda</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+        </div>
+        <div class="panel" style="margin-top:18px">
+          <div class="panel-head">
+            <h3>Comparação lado a lado</h3>
+            <div class="hint">Marque 2+ criativos na tabela acima</div>
+          </div>
+          <div id="creative-compare"></div>
+        </div>
+      </section>
+
       <!-- BLOCK 3 — LEADS TABLE -->
       <section class="section" id="block-3">
         <div class="section-head">
           <div>
-            <div class="label">Bloco 03 — Lista de Leads</div>
+            <div class="label">Bloco 04 — Lista de Leads</div>
             <h2>LEADS DETALHADOS</h2>
           </div>
           <div class="desc">Lista paginada com 20 leads por página, respeitando todos os filtros aplicados acima.</div>
@@ -632,7 +722,9 @@ function loadData(){
         const camp = (r.campanha || r.Campanha || r.CAMPANHA || r['CAMPANHA'] || '').trim();
         const val  = parseValor(r.valor_gasto || r.Valor_gasto || r['valor gasto'] || r['Valor Gasto'] || r['Valor gasto'] || r.VALOR_GASTO || r.valorGasto || '');
         const ym   = parseYearMonth(r.data || r.Data || r.DATA || r.mes || r['mês'] || '');
-        return { campaign: camp, valor: val, ym: ym?.ym || '', dt: ym?.dt || null };
+        const anuncio = (r.anuncio || r.Anuncio || r['anúncio'] || r.criativo || '').trim();
+        const adId    = (r.id_anuncio || r.ID_anuncio || '').trim();
+        return { campaign: camp, valor: val, ym: ym?.ym || '', dt: ym?.dt || null, anuncio, adId };
       }).filter(s => s.campaign && s.ym);
       // diagnóstico no console pra ajudar quando algo não cruza
       try{
@@ -642,6 +734,7 @@ function loadData(){
           const months = [...new Set(SPEND_RAW.map(s=>s.ym))].sort();
           console.log('[gasto_campanha] meses:', months.join(', '));
           console.log('[gasto_campanha] campanhas:', [...new Set(SPEND_RAW.map(s=>s.campaign))]);
+          console.log('[gasto_campanha] anúncios:', [...new Set(SPEND_RAW.map(s=>s.anuncio).filter(Boolean))]);
         } else if(spendData && spendData.length){
           console.warn('[gasto_campanha] aba retornou linhas mas nenhuma pôde ser parseada. Cabeçalhos lidos:', Object.keys(spendData[0]||{}));
         } else {
@@ -680,7 +773,7 @@ function loadData(){
             segmento: pick('segmento_empresa','segmento','Segmento','segmento_da_empresa','segmento_contato','segmento_contato_empresa','setor','Setor'),
             canal:    pick('fonte_oportunidade','canal','Canal','first_atribution_source','last_atribution_source','source'),
             funcionarios: pick('nro_funcionarios','n_funcionarios','numero_funcionarios','funcionarios','qtd_funcionarios','quantidade_funcionarios'),
-            conteudo: pick('first_atribution_content','last_atribution_content','conteudo','Conteúdo','content'),
+            conteudo: pick('last_atribution_content','first_atribution_content','conteudo','Conteúdo','content'),
             tag,
             tagsRaw: tagRaw,
             stage: normStage(r.estagio_pipeline||''),
@@ -731,6 +824,8 @@ function bootstrap(){
   MS.tag      = new MultiSelect(document.getElementById('f-tag'),      { allLabel:'Todas as tags', options:['MQL','Q-MQL','N-MQL'], onChange:render });
   MS.stage    = new MultiSelect(document.getElementById('f-stage'),    { allLabel:'Todos os estágios', options:stages, onChange:render });
   MS.source   = new MultiSelect(document.getElementById('f-source'),   { allLabel:'Todas as origens', options:sources, onChange:render });
+  const creatives = [...new Set(RAW.map(r=> (r.conteudo||'').trim()).filter(Boolean))].sort();
+  MS.creative = new MultiSelect(document.getElementById('f-creative'),  { allLabel:'Todos os criativos', options:creatives, onChange:render });
 
   // suggest sensible default date range
   const dates = RAW.map(r=>r.dt).filter(Boolean).sort((a,b)=>a-b);
@@ -746,7 +841,7 @@ function bootstrap(){
   ['f-start','f-end'].forEach(id =>
     document.getElementById(id).addEventListener('change', render));
   document.getElementById('clear-btn').addEventListener('click', ()=>{
-    MS.camp.clear(); MS.tag.clear(); MS.stage.clear(); MS.source.clear(); MS.pipeline.clear();
+    MS.camp.clear(); MS.tag.clear(); MS.stage.clear(); MS.source.clear(); MS.pipeline.clear(); MS.creative.clear();
     if(dates.length){
       document.getElementById('f-start').value = dates[0].toISOString().slice(0,10);
       document.getElementById('f-end').value   = dates[dates.length-1].toISOString().slice(0,10);
@@ -760,6 +855,8 @@ function bootstrap(){
     'Atualizado ' + now.toLocaleDateString('pt-BR') + ' • ' + now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
 
   wireTablePager();
+  wireCreativesSort();
+  wireCreativeControls();
   render();
 
   // hide loader
@@ -777,6 +874,7 @@ function getFilters(){
     tag:     MS.tag      ? MS.tag.getValues()      : new Set(),
     stage:   MS.stage    ? MS.stage.getValues()    : new Set(),
     source:  MS.source   ? MS.source.getValues()   : new Set(),
+    creative:MS.creative ? MS.creative.getValues() : new Set(),
     pipeline:MS.pipeline ? MS.pipeline.getValues() : new Set(),
   };
 }
@@ -791,6 +889,7 @@ function getFiltered(){
     if(f.tag.size      && !f.tag.has(r.tag))       return false;
     if(f.stage.size    && !f.stage.has(r.stage))   return false;
     if(f.source.size   && !f.source.has(r.source)) return false;
+    if(f.creative.size && !f.creative.has((r.conteudo||'').trim())) return false;
     if(f.pipeline.size && !f.pipeline.has(r.pipeline)) return false;
     return true;
   });
@@ -874,7 +973,270 @@ function render(){
   renderOriginSummary(data);
   renderPipelineChart(data);
   renderFunnel(data);
+  renderCreatives(data);
   renderLeadsTable(data);
+}
+
+/* =========================================================
+   CREATIVES (last_atribution_content)
+========================================================= */
+let CREATIVE_SORT = { key:'leads', dir:-1 };
+let CREATIVE_FILTER = null;
+let CREATIVE_LEVEL = 'creative'; // 'creative' | 'campaign' — toggle de nível
+
+function creativeStats(data){
+  const byCampaign = CREATIVE_LEVEL === 'campaign';
+  const map = {};
+  const APRES_IDX = STAGE_ORDER.indexOf('Apresentação Agendada');
+  for(const r of data){
+    const key = byCampaign
+      ? ((r.campaign||'').trim() || '(sem campanha)')
+      : ((r.conteudo||'').trim() || '(sem criativo)');
+    if(!map[key]) map[key] = { creative:key, leads:0, mql:0, qmql:0, nmql:0, apres:0, vendas:0, byCamp:{} };
+    const m = map[key];
+    m.leads++;
+    if(r.tag==='MQL') m.mql++;
+    else if(r.tag==='Q-MQL') m.qmql++;
+    else if(r.tag==='N-MQL') m.nmql++;
+    const idx = STAGE_ORDER.indexOf(r.stage);
+    if(idx !== -1 && APRES_IDX !== -1 && idx >= APRES_IDX) m.apres++;
+    if(r.stage === 'Venda') m.vendas++;
+    if(r.campaign) m.byCamp[r.campaign] = (m.byCamp[r.campaign]||0) + 1;
+  }
+  // ---- GASTO ----
+  // 1º: gasto direto por anúncio (coluna `anuncio` da aba gasto_campanha,
+  //     que bate exatamente com last_atribution_content).
+  // 2º fallback: linhas de gasto SEM anúncio são rateadas por campanha
+  //     proporcionalmente aos leads de cada criativo.
+  const fSpend = getFilteredSpend();
+  const spendAd = {};
+  const spendCampNoAd = {};
+  for(const s of fSpend){
+    if(s.anuncio) spendAd[s.anuncio] = (spendAd[s.anuncio]||0) + s.valor;
+    else spendCampNoAd[s.campaign] = (spendCampNoAd[s.campaign]||0) + s.valor;
+  }
+  const leadsCamp = {};
+  for(const r of data){ if(r.campaign) leadsCamp[r.campaign] = (leadsCamp[r.campaign]||0) + 1; }
+  const list = Object.values(map);
+  if(byCampaign){
+    // gasto total por campanha = linhas com e sem anúncio
+    const spendCampAll = {};
+    for(const s of fSpend) spendCampAll[s.campaign] = (spendCampAll[s.campaign]||0) + s.valor;
+    for(const m of list){
+      const inv = spendCampAll[m.creative] || 0;
+      m.spendDirect = inv > 0;
+      m.invest = inv;
+      finishCreativeMetrics(m, inv);
+    }
+    return list;
+  }
+  for(const m of list){
+    let inv = spendAd[m.creative] || 0;
+    m.spendDirect = inv > 0;
+    for(const c in m.byCamp){
+      if(spendCampNoAd[c] && leadsCamp[c]) inv += spendCampNoAd[c] * (m.byCamp[c] / leadsCamp[c]);
+    }
+    m.invest = inv;
+    finishCreativeMetrics(m, inv);
+  }
+  return list;
+}
+
+function finishCreativeMetrics(m, inv){
+  m.cpl = m.leads ? inv/m.leads : 0;
+  m.qualified = m.mql + m.qmql;
+  m.qualPct = m.leads ? m.qualified / m.leads * 100 : 0;
+  m.cplQual = (inv > 0 && m.qualified > 0) ? inv/m.qualified : (inv > 0 ? Infinity : 0);
+  m.cplMql = (inv > 0 && m.mql > 0) ? inv/m.mql : (inv > 0 ? Infinity : 0);
+  m.apresPct = m.leads ? m.apres/m.leads*100 : 0;
+  m.vendasPct = m.leads ? m.vendas/m.leads*100 : 0;
+  m.convVenda = m.apres ? m.vendas/m.apres*100 : 0;
+}
+
+/* Status Escalar / Observar / Matar por CPL qualificado vs meta */
+let CPLQ_GOAL = (()=>{ try{ return Number(localStorage.getItem('tatsuo_cplq_goal'))||300; }catch(e){ return 300; } })();
+function creativeStatus(m){
+  if(!m.invest) return ['none','Sem custo'];
+  if(m.cplQual !== Infinity && m.cplQual <= CPLQ_GOAL) return ['esc','Escalar'];
+  if(m.leads < 10) return ['obs','Observar'];
+  return ['kill','Matar'];
+}
+
+function renderCreatives(data){
+  const list = creativeStats(data);
+  renderCreativeKPIs(list);
+  renderCreativesTable(list);
+  renderCreativeCompare(list);
+}
+
+/* KPIs do bloco de criativos */
+function renderCreativeKPIs(list){
+  const el = document.getElementById('creative-kpis');
+  if(!el) return;
+  const t = list.reduce((a,m)=>({invest:a.invest+m.invest, leads:a.leads+m.leads, mql:a.mql+m.mql, qual:a.qual+m.qualified, vendas:a.vendas+m.vendas}), {invest:0,leads:0,mql:0,qual:0,vendas:0});
+  const spendTotal = totalSpend(getFilteredSpend());
+  const unattr = Math.max(0, spendTotal - t.invest);
+  const cpl = t.leads ? t.invest/t.leads : 0;
+  const cplQ = t.qual ? t.invest/t.qual : 0;
+  const cplM = t.mql ? t.invest/t.mql : 0;
+  const kpis = [
+    ['Investido', t.invest ? fmtBRLshort(t.invest) : '—', unattr > 1 ? '+ ' + fmtBRLshort(unattr) + ' não atribuído' : ''],
+    ['Leads', fmtNum(t.leads), ''],
+    ['CPL', t.invest ? fmtBRL(cpl) : '—', 'custo por lead'],
+    ['Qualificados', fmtNum(t.qual), t.leads ? (t.qual/t.leads*100).toFixed(1).replace('.',',')+'% dos leads' : ''],
+    ['CPL qualificado', (t.invest && t.qual) ? fmtBRL(cplQ) : '—', 'o número que importa'],
+    ['Custo / MQL', (t.invest && t.mql) ? fmtBRL(cplM) : '—', fmtNum(t.mql)+' MQL'],
+    ['Vendas', fmtNum(t.vendas), ''],
+  ];
+  el.innerHTML = kpis.map(k=>`<div class="ckpi"><div class="ck-label">${k[0]}</div><div class="ck-val">${k[1]}</div><div class="ck-sub">${k[2]}</div></div>`).join('');
+}
+
+function renderCreativesChartRemoved(){}
+
+function renderCreativesTable(list){
+  const tbody = document.querySelector('#creatives-table tbody');
+  let rows = [...list];
+  if(CREATIVE_FILTER) rows = rows.filter(m => m.creative === CREATIVE_FILTER);
+  const k = CREATIVE_SORT.key, dir = CREATIVE_SORT.dir;
+  rows.sort((a,b)=>{
+    const va = a[k], vb = b[k];
+    if(typeof va === 'string') return va.localeCompare(vb) * dir;
+    const na = (va===Infinity? 1e15 : va)||0, nb = (vb===Infinity? 1e15 : vb)||0;
+    return (na - nb) * dir;
+  });
+  if(!rows.length){
+    tbody.innerHTML = `<tr><td colspan="13"><div class="empty-state">Nenhum criativo corresponde aos filtros.</div></td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(m => {
+    const [scls, stxt] = creativeStatus(m);
+    const checked = CREATIVE_COMPARE.has(m.creative) ? ' checked' : '';
+    return `
+    <tr${CREATIVE_FILTER === m.creative ? ' style="background:rgba(192,57,43,.08)"' : ''}>
+      <td style="width:34px"><input type="checkbox" class="cmp-check" data-creative="${esc(m.creative)}"${checked}></td>
+      <td class="wrap" style="max-width:260px;white-space:normal;line-height:1.4"><span class="lead-name">${esc(m.creative)}</span></td>
+      <td class="num">${m.invest ? fmtBRLshort(m.invest) : '<span class="dim">—</span>'}</td>
+      <td class="num">${fmtNum(m.leads)}</td>
+      <td class="num" style="color:#C0392B;font-weight:600">${fmtNum(m.mql)}</td>
+      <td class="num" style="color:#E8C547;font-weight:600">${fmtNum(m.qmql)}</td>
+      <td class="num" style="color:#8A9AAB">${fmtNum(m.nmql)}</td>
+      <td class="num">${m.invest ? fmtBRL(m.cpl) : '<span class="dim">—</span>'}</td>
+      <td class="num">${m.invest ? (m.cplQual===Infinity?'<span class="trap">∞</span>':fmtBRL(m.cplQual)) : '<span class="dim">—</span>'}</td>
+      <td class="num">${fmtNum(m.apres)} <span class="subpct">${m.apresPct.toFixed(1).replace('.',',')}%</span></td>
+      <td class="num" style="color:#E8C547;font-weight:700">${fmtNum(m.vendas)} <span class="subpct">${m.vendasPct.toFixed(1).replace('.',',')}%</span></td>
+      <td class="num">${m.apres ? m.convVenda.toFixed(1).replace('.',',')+'%' : '<span class="dim">—</span>'}</td>
+      <td><span class="pill ${scls}">${stxt}</span></td>
+    </tr>`;
+  }).join('');
+}
+
+/* ---- Comparação lado a lado ---- */
+let CREATIVE_COMPARE = new Set();
+
+function renderCreativeCompare(list){
+  const box = document.getElementById('creative-compare');
+  if(!box) return;
+  const sel = list.filter(m => CREATIVE_COMPARE.has(m.creative));
+  if(sel.length < 2){
+    box.innerHTML = sel.length === 1
+      ? '<div class="empty-state" style="padding:20px">Marque mais 1 criativo para comparar lado a lado.</div>'
+      : '<div class="empty-state" style="padding:20px">Marque 2 ou mais criativos na tabela (coluna de seleção) para comparar lado a lado.</div>';
+    return;
+  }
+  const withCost = sel.filter(m => m.invest > 0 && m.cplQual !== Infinity);
+  const best = withCost.length ? Math.min(...withCost.map(m=>m.cplQual)) : null;
+  const bestC = withCost.find(m => m.cplQual === best);
+  const verdict = m => {
+    if(!m.invest) return '<span class="pill none">Sem custo</span>';
+    if(m.cplQual === Infinity || m.cplQual > CPLQ_GOAL) return '<span class="pill kill">Pausar</span>';
+    if(best !== null && m.cplQual === best) return '<span class="pill esc">Escalar</span>';
+    return '<span class="pill obs">Manter</span>';
+  };
+  const line = (label, fn, cls) => `<tr><td>${label}</td>${sel.map(m=>`<td class="num ${cls?cls(m):''}">${fn(m)}</td>`).join('')}</tr>`;
+  let insight = '';
+  if(bestC){
+    insight = `<div class="cmp-insight">✓ Melhor CPL qualificado: <b>${esc(bestC.creative)}</b> a <b>${fmtBRL(best)}</b> por lead qualificado — candidato a escalar.</div>`;
+  }
+  box.innerHTML = `
+    ${insight}
+    <div class="table-wrap"><table id="compare-table">
+      <thead><tr><th>Métrica</th>${sel.map(m=>`<th class="num" style="max-width:200px;white-space:normal">${esc(m.creative)}</th>`).join('')}</tr></thead>
+      <tbody>
+        ${line('Investido', m=> m.invest ? fmtBRL(m.invest) : '—')}
+        ${line('Leads', m=>fmtNum(m.leads))}
+        ${line('CPL', m=> m.invest ? fmtBRL(m.cpl) : '—')}
+        ${line('MQL', m=>fmtNum(m.mql))}
+        ${line('Q-MQL', m=>fmtNum(m.qmql))}
+        ${line('N-MQL', m=>fmtNum(m.nmql))}
+        ${line('% Qualificados', m=>m.qualPct.toFixed(1).replace('.',',')+'%')}
+        ${line('CPL qualificado', m=> !m.invest ? '—' : (m.cplQual===Infinity?'∞':fmtBRL(m.cplQual)), m=> (best!==null && m.cplQual===best) ? 'win' : ((m.cplQual===Infinity||m.cplQual>CPLQ_GOAL)&&m.invest ? 'lose' : ''))}
+        ${line('Custo / MQL', m=> !m.invest ? '—' : (m.cplMql===Infinity?'∞':fmtBRL(m.cplMql)))}
+        ${line('Apres. agendada', m=>fmtNum(m.apres)+' ('+m.apresPct.toFixed(1).replace('.',',')+'%)')}
+        ${line('Vendas', m=>fmtNum(m.vendas)+' ('+m.vendasPct.toFixed(1).replace('.',',')+'%)')}
+        ${line('Apres. → Venda', m=> m.apres ? m.convVenda.toFixed(1).replace('.',',')+'%' : '—')}
+        ${line('Veredito', verdict)}
+      </tbody>
+    </table></div>`;
+}
+
+function wireCreativeControls(){
+  // toggle de nível Criativos / Campanhas
+  const toggle = document.getElementById('level-toggle');
+  if(toggle && !toggle.dataset.wired){
+    toggle.dataset.wired = '1';
+    toggle.addEventListener('click', (e)=>{
+      const btn = e.target.closest('button[data-level]');
+      if(!btn || btn.classList.contains('active')) return;
+      CREATIVE_LEVEL = btn.dataset.level;
+      toggle.querySelectorAll('button').forEach(b=>b.classList.toggle('active', b===btn));
+      CREATIVE_COMPARE.clear();
+      CREATIVE_FILTER = null;
+      const isCamp = CREATIVE_LEVEL === 'campaign';
+      const th = document.getElementById('th-level');
+      if(th) th.textContent = isCamp ? 'Campanha' : 'Criativo';
+      const hint = document.querySelector('#creative-compare')?.closest('.panel')?.querySelector('.hint');
+      if(hint) hint.textContent = isCamp ? 'Marque 2+ campanhas na tabela acima' : 'Marque 2+ criativos na tabela acima';
+      renderCreatives(getFiltered());
+    });
+  }
+  // checkboxes de comparação (delegação)
+  const tbl = document.getElementById('creatives-table');
+  if(tbl && !tbl.dataset.wired){
+    tbl.dataset.wired = '1';
+    tbl.addEventListener('change', (e)=>{
+      const cb = e.target.closest('.cmp-check');
+      if(!cb) return;
+      if(cb.checked) CREATIVE_COMPARE.add(cb.dataset.creative);
+      else CREATIVE_COMPARE.delete(cb.dataset.creative);
+      renderCreativeCompare(creativeStats(getFiltered()));
+    });
+  }
+  // meta de CPL qualificado
+  const goal = document.getElementById('cplq-goal');
+  if(goal && !goal.dataset.wired){
+    goal.dataset.wired = '1';
+    goal.value = CPLQ_GOAL;
+    goal.addEventListener('input', ()=>{
+      CPLQ_GOAL = Number(goal.value) || 0;
+      try{ localStorage.setItem('tatsuo_cplq_goal', String(CPLQ_GOAL)); }catch(e){}
+      const list = creativeStats(getFiltered());
+      renderCreativesTable(list);
+      renderCreativeCompare(list);
+    });
+  }
+}
+
+function wireCreativesSort(){
+  document.querySelectorAll('#creatives-table thead th[data-sort]').forEach(th=>{
+    th.style.cursor = 'pointer';
+    th.title = 'Ordenar';
+    th.addEventListener('click', ()=>{
+      const key = th.dataset.sort;
+      if(CREATIVE_SORT.key === key) CREATIVE_SORT.dir *= -1;
+      else CREATIVE_SORT = { key, dir:-1 };
+      renderCreativesTable(creativeStats(getFiltered()));
+    });
+  });
 }
 
 /* =========================================================
@@ -1230,7 +1592,6 @@ function renderTagsChart(data){
     data:{ labels,
       datasets:[
         { label:'Leads',            data:counts,   backgroundColor:'#C0392B', borderRadius:6, maxBarThickness:36, yAxisID:'y' },
-        { label:'Custo / lead (R$)',data:cpls,     backgroundColor:'#E8C547', borderRadius:6, maxBarThickness:36, yAxisID:'y1' },
       ]},
     options:{
       responsive:true, maintainAspectRatio:false,
@@ -1241,23 +1602,18 @@ function renderTagsChart(data){
       },
       onHover: (e, els)=> { e.native.target.style.cursor = els && els.length ? 'pointer' : 'default'; },
       plugins:{
-        legend:{ position:'bottom', labels:{ color:'#A0A0A0', boxWidth:12, boxHeight:12, font:{family:'Outfit', size:11}, padding:14 } },
+        legend:{ display:false },
         tooltip:{
           backgroundColor:'#181818', borderColor:'#2A2A2A', borderWidth:1,
           titleColor:'#fff', bodyColor:'#fff',
           callbacks:{
-            label: (c)=> {
-              const v = c.parsed.y;
-              if(c.datasetIndex===0) return ' Leads: ' + fmtNum(v);
-              return ' Custo / lead: ' + fmtBRL(v);
-            }
+            label: (c)=> ' Leads: ' + fmtNum(c.parsed.y)
           }
         }
       },
       scales:{
         x:{ grid:{ color:'rgba(255,255,255,.04)' }, ticks:{ color:'#A0A0A0', font:{ family:'Outfit', size:12 } }},
-        y:{ position:'left', grid:{ color:'rgba(255,255,255,.04)' }, ticks:{ color:'#A0A0A0', font:{family:'Outfit'} }, title:{display:true,text:'Leads',color:'#6B6B6B',font:{family:'Outfit',size:10}} },
-        y1:{ position:'right', grid:{display:false}, ticks:{ color:'#A0A0A0', callback:v=>fmtBRLshort(v), font:{family:'Outfit'} }, title:{display:true,text:'R$',color:'#6B6B6B',font:{family:'Outfit',size:10}} }
+        y:{ position:'left', grid:{ color:'rgba(255,255,255,.04)' }, ticks:{ color:'#A0A0A0', font:{family:'Outfit'} }, title:{display:true,text:'Leads',color:'#6B6B6B',font:{family:'Outfit',size:10}} }
       }
     }
   });
