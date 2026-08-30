@@ -277,6 +277,10 @@
   .pill.obs{color:#E8C547;background:rgba(232,197,71,.12)}
   .pill.kill{color:#E5484D;background:rgba(229,72,77,.14)}
   .pill.none{color:var(--muted);background:rgba(255,255,255,.05)}
+  .pill.on{color:#3FB37F;background:rgba(63,179,127,.14)}
+  .pill.off{color:#8A9AAB;background:rgba(138,154,171,.12)}
+  .pill.unk{color:var(--dim);background:rgba(255,255,255,.04)}
+  tr.is-off td{opacity:.72}
   .trap{color:#E5484D;font-weight:800}
   .subpct{font-size:10.5px;color:var(--dim);font-weight:400;margin-left:3px}
   .level-toggle{display:flex;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-left:auto}
@@ -491,13 +495,13 @@
             <div class="label">Bloco 03 — Performance de Criativos</div>
             <h2>PERFORMANCE POR CRIATIVO</h2>
           </div>
-          <div class="desc">Agrupado por <code>last_atribution_content</code>, com gasto real por anúncio (coluna <code>anuncio</code> da aba gasto_campanha). Respeita os filtros do topo.</div>
+          <div class="desc">Agrupado por <code>last_atribution_content</code>, com gasto real por anúncio (coluna <code>anuncio</code> da aba gasto_campanha). Traz <b>todos os criativos</b> do período — inclusive os que ainda não geraram leads. A coluna <b>Status</b> vem da coluna <code>status</code> da aba gasto_campanha (ATIVO / INATIVO). Respeita os filtros do topo.</div>
         </div>
         <div class="creative-kpis" id="creative-kpis"></div>
         <div class="goalbox">
           <label>Meta de CPL qualificado</label>
           <input type="number" id="cplq-goal" min="0" step="10">
-          <span class="note">Define o status Escalar / Observar / Matar — recalcula ao vivo. CPL qualificado = investido ÷ (MQL + Q-MQL).</span>
+          <span class="note">Define a ação Escalar / Observar / Matar — recalcula ao vivo. Criativo INATIVO aparece como Pausado. CPL qualificado = investido ÷ (MQL + Q-MQL).</span>
           <div class="level-toggle" id="level-toggle">
             <button type="button" data-level="creative" class="active">Criativos</button>
             <button type="button" data-level="campaign">Campanhas</button>
@@ -511,6 +515,7 @@
                   <th data-sort="campaign" id="th-campanha">Campanha</th>
                   <th></th>
                   <th data-sort="creative" id="th-level">Criativo</th>
+                  <th data-sort="statusRank">Status</th>
                   <th class="num" data-sort="invest">Investido</th>
                   <th class="num" data-sort="leads">Leads</th>
                   <th class="num" data-sort="mql">MQL</th>
@@ -521,7 +526,7 @@
                   <th class="num" data-sort="apres">Apres. agendada</th>
                   <th class="num" data-sort="vendas">Vendas</th>
                   <th class="num" data-sort="convVenda">Apres. → Venda</th>
-                  <th>Status</th>
+                  <th>Ação</th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -713,6 +718,22 @@ function parseValor(v){
   const n = parseFloat(s);
   return isNaN(n) ? 0 : n;
 }
+/* ATIVO / INATIVO do anúncio — lê a coluna de status da aba gasto_campanha.
+   Aceita as variações mais comuns de escrita/idioma; devolve '' quando a
+   planilha não informa nada para aquela linha. */
+function normAdStatus(v){
+  if(v===null || v===undefined) return '';
+  const s = String(v).trim();
+  if(!s) return '';
+  const u = s.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ');
+  if(/^(ATIVO|ATIVA|ATIVOS|ATIVAS|ACTIVE|ENABLED|EM VEICULACAO|VEICULANDO|RODANDO|LIGADO|ON|SIM|S|TRUE|VERDADEIRO|1)$/.test(u)) return 'ATIVO';
+  if(/^(INATIVO|INATIVA|INATIVOS|INATIVAS|INACTIVE|PAUSADO|PAUSADA|PAUSED|DESATIVADO|DESATIVADA|DESLIGADO|ARQUIVADO|ARCHIVED|DISABLED|OFF|NAO|N|FALSE|FALSO|0|ENCERRADO|FINALIZADO|EXCLUIDO|DELETADO|DELETED)$/.test(u)) return 'INATIVO';
+  // fallback por palavra-chave (ex.: "Ativo - veiculando", "Pausado pelo anunciante")
+  if(u.includes('INATIV') || u.includes('PAUS') || u.includes('DESATIV') || u.includes('ARQUIV') || u.includes('ENCERR') || u.includes('DESLIG')) return 'INATIVO';
+  if(u.includes('ATIV') || u.includes('VEICUL')) return 'ATIVO';
+  return '';
+}
+
 function normTag(t){
   if(!t) return '';
   const u = String(t).toUpperCase().replace(/\s+/g,'');
@@ -753,8 +774,16 @@ function loadData(){
         else { const p = parseYearMonth(rawDate); if(p){ dt = p.dt; ym = p.ym; } }
         const anuncio = (r.anuncio || r.Anuncio || r['anúncio'] || r.criativo || '').trim();
         const adId    = (r.id_anuncio || r.ID_anuncio || '').trim();
-        return { campaign: camp, valor: val, ym, dt, day, anuncio, adId };
+        // status do anúncio (ATIVO / INATIVO) — coluna opcional da aba gasto_campanha
+        const status  = normAdStatus(
+          r.status || r.Status || r.STATUS || r.situacao || r.Situacao || r['situação'] || r['Situação'] ||
+          r.ativo || r.Ativo || r.ATIVO || r.status_anuncio || r['status_anúncio'] || r['status anuncio'] ||
+          r['status do anuncio'] || r['Status do anúncio'] || r.veiculacao || r['veiculação'] ||
+          r.delivery || r.effective_status || r.ad_status || ''
+        );
+        return { campaign: camp, valor: val, ym, dt, day, anuncio, adId, status };
       }).filter(s => s.campaign && s.dt);
+      buildStatusIndex();
       // diagnóstico no console pra ajudar quando algo não cruza
       try{
         console.log('[gasto_campanha] linhas válidas:', SPEND_RAW.length, 'total R$:',
@@ -764,6 +793,12 @@ function loadData(){
           console.log('[gasto_campanha] meses:', months.join(', '));
           console.log('[gasto_campanha] campanhas:', [...new Set(SPEND_RAW.map(s=>s.campaign))]);
           console.log('[gasto_campanha] anúncios:', [...new Set(SPEND_RAW.map(s=>s.anuncio).filter(Boolean))]);
+          const semStatus = SPEND_RAW.filter(s=>!s.status).length;
+          if(semStatus === SPEND_RAW.length){
+            console.warn('[gasto_campanha] nenhuma linha tem coluna de status — a coluna "Status" da tabela de criativos vai aparecer como "—". Crie uma coluna chamada "status" com ATIVO / INATIVO.');
+          } else if(semStatus){
+            console.warn('[gasto_campanha] linhas sem status preenchido:', semStatus);
+          }
         } else if(spendData && spendData.length){
           console.warn('[gasto_campanha] aba retornou linhas mas nenhuma pôde ser parseada. Cabeçalhos lidos:', Object.keys(spendData[0]||{}));
         } else {
@@ -853,7 +888,11 @@ function bootstrap(){
   MS.tag      = new MultiSelect(document.getElementById('f-tag'),      { allLabel:'Todas as tags', options:['MQL','Q-MQL','N-MQL'], onChange:render });
   MS.stage    = new MultiSelect(document.getElementById('f-stage'),    { allLabel:'Todos os estágios', options:stages, onChange:render });
   MS.source   = new MultiSelect(document.getElementById('f-source'),   { allLabel:'Todas as origens', options:sources, onChange:render });
-  const creatives = [...new Set(RAW.map(r=> (r.conteudo||'').trim()).filter(Boolean))].sort();
+  // inclui anúncios que só existem na aba gasto_campanha (criativos sem lead)
+  const creatives = [...new Set([
+    ...RAW.map(r => (r.conteudo||'').trim()),
+    ...SPEND_RAW.map(s => (s.anuncio||'').trim()),
+  ].filter(Boolean))].sort();
   MS.creative = new MultiSelect(document.getElementById('f-creative'),  { allLabel:'Todos os criativos', options:creatives, onChange:render });
 
   // suggest sensible default date range
@@ -1023,6 +1062,50 @@ let CREATIVE_SORT = { key:'leads', dir:-1 };
 let CREATIVE_FILTER = null;
 let CREATIVE_LEVEL = 'creative'; // 'creative' | 'campaign' — toggle de nível
 
+/* ---------------------------------------------------------
+   STATUS DO ANÚNCIO (ATIVO / INATIVO)
+   Lido da coluna `status` da aba gasto_campanha. Usa sempre a linha
+   MAIS RECENTE de cada anúncio — o status é o estado atual da conta,
+   não muda conforme o período filtrado.
+--------------------------------------------------------- */
+let AD_STATUS = {};       // 'campanha||anuncio' -> { t, v, campaign }
+let AD_STATUS_NAME = {};  // 'anuncio'           -> { t, v }
+let CAMP_STATUS = {};     // 'campanha'          -> 'ATIVO' | 'INATIVO'
+
+function buildStatusIndex(){
+  AD_STATUS = {}; AD_STATUS_NAME = {}; CAMP_STATUS = {};
+  const campOnly = {};
+  for(const s of SPEND_RAW){
+    if(!s.status) continue;
+    const t = s.dt ? s.dt.getTime() : 0;
+    if(s.anuncio){
+      const k = s.campaign + '||' + s.anuncio;
+      if(!AD_STATUS[k] || t >= AD_STATUS[k].t) AD_STATUS[k] = { t, v:s.status, campaign:s.campaign };
+      if(!AD_STATUS_NAME[s.anuncio] || t >= AD_STATUS_NAME[s.anuncio].t) AD_STATUS_NAME[s.anuncio] = { t, v:s.status };
+    } else {
+      if(!campOnly[s.campaign] || t >= campOnly[s.campaign].t) campOnly[s.campaign] = { t, v:s.status };
+    }
+  }
+  // campanha é ATIVA quando tem ao menos um anúncio ativo
+  for(const k in AD_STATUS){
+    const e = AD_STATUS[k];
+    if(e.v === 'ATIVO') CAMP_STATUS[e.campaign] = 'ATIVO';
+    else if(!CAMP_STATUS[e.campaign]) CAMP_STATUS[e.campaign] = 'INATIVO';
+  }
+  for(const c in campOnly) if(!CAMP_STATUS[c]) CAMP_STATUS[c] = campOnly[c].v;
+}
+
+function adStatus(campaign, anuncio){
+  const k = (campaign||'') + '||' + (anuncio||'');
+  if(AD_STATUS[k]) return AD_STATUS[k].v;                       // match exato campanha + anúncio
+  if(AD_STATUS_NAME[anuncio]) return AD_STATUS_NAME[anuncio].v; // fallback só pelo nome do anúncio
+  return '';
+}
+
+function newCreativeRow(key, creative, campaign){
+  return { key, creative, campaign, leads:0, mql:0, qmql:0, nmql:0, apres:0, vendas:0, byCamp:{} };
+}
+
 function creativeStats(data, period){
   const byCampaign = CREATIVE_LEVEL === 'campaign';
   const map = {};
@@ -1031,7 +1114,7 @@ function creativeStats(data, period){
     const camp = (r.campaign||'').trim() || '(sem campanha)';
     const cria = (r.conteudo||'').trim() || '(sem criativo)';
     const key = byCampaign ? camp : (camp + '||' + cria);
-    if(!map[key]) map[key] = { key, creative: byCampaign ? camp : cria, campaign: byCampaign ? '' : camp, leads:0, mql:0, qmql:0, nmql:0, apres:0, vendas:0, byCamp:{} };
+    if(!map[key]) map[key] = newCreativeRow(key, byCampaign ? camp : cria, byCampaign ? '' : camp);
     const m = map[key];
     m.leads++;
     if(r.tag==='MQL') m.mql++;
@@ -1048,15 +1131,20 @@ function creativeStats(data, period){
   // 2º fallback: linhas de gasto SEM anúncio são rateadas por campanha
   //     proporcionalmente aos leads de cada criativo.
   const fSpend = getFilteredSpend(period);
-  const spendAd = {};        // campanha||anúncio
-  const spendAdOnly = {};    // anúncio -> {valor, camps:Set} (fallback p/ nome de campanha divergente)
+  const fCreative = MS.creative ? MS.creative.getValues() : new Set();
+  const spendAd = {};        // campanha||anúncio -> valor
+  const spendAdMeta = {};    // campanha||anúncio -> {campaign, anuncio}
+  const spendAdOnly = {};    // anúncio -> {valor, camps:Set, keys:Set} (fallback p/ nome de campanha divergente)
   const spendCampNoAd = {};
   for(const s of fSpend){
     if(s.anuncio){
-      spendAd[s.campaign + '||' + s.anuncio] = (spendAd[s.campaign + '||' + s.anuncio]||0) + s.valor;
-      if(!spendAdOnly[s.anuncio]) spendAdOnly[s.anuncio] = { valor:0, camps:new Set() };
+      const k = s.campaign + '||' + s.anuncio;
+      spendAd[k] = (spendAd[k]||0) + s.valor;
+      spendAdMeta[k] = { campaign: s.campaign, anuncio: s.anuncio };
+      if(!spendAdOnly[s.anuncio]) spendAdOnly[s.anuncio] = { valor:0, camps:new Set(), keys:new Set() };
       spendAdOnly[s.anuncio].valor += s.valor;
       spendAdOnly[s.anuncio].camps.add(s.campaign);
+      spendAdOnly[s.anuncio].keys.add(k);
     }
     else spendCampNoAd[s.campaign] = (spendCampNoAd[s.campaign]||0) + s.valor;
   }
@@ -1067,16 +1155,31 @@ function creativeStats(data, period){
     // gasto total por campanha = linhas com e sem anúncio
     const spendCampAll = {};
     for(const s of fSpend) spendCampAll[s.campaign] = (spendCampAll[s.campaign]||0) + s.valor;
+    // toda campanha com gasto no período entra na tabela, mesmo sem nenhum lead
+    for(const c in spendCampAll){
+      if(map[c]) continue;
+      const m = newCreativeRow(c, c, '');
+      map[c] = m; list.push(m);
+    }
     for(const m of list){
       const inv = spendCampAll[m.creative] || 0;
       m.spendDirect = inv > 0;
       m.invest = inv;
+      m.status = CAMP_STATUS[m.creative] || '';
+      m.statusRank = m.status === 'ATIVO' ? 2 : (m.status === 'INATIVO' ? 1 : 0);
       finishCreativeMetrics(m, inv);
     }
     return list;
   }
   // 1ª passada: match exato campanha+anúncio; marca anúncios já consumidos
-  for(const m of list){ m._inv = spendAd[m.key] || 0; if(m._inv && spendAdOnly[m.creative]) spendAdOnly[m.creative].used = true; }
+  const usedKeys = new Set();
+  for(const m of list){
+    m._inv = spendAd[m.key] || 0;
+    if(m._inv){
+      usedKeys.add(m.key);
+      if(spendAdOnly[m.creative]) spendAdOnly[m.creative].used = true;
+    }
+  }
   // 2ª passada (fallback): anúncio sem match exato de campanha → rateia por leads entre os homônimos sem match
   for(const cria in spendAdOnly){
     const e = spendAdOnly[cria];
@@ -1084,7 +1187,20 @@ function creativeStats(data, period){
     const cands = list.filter(m => m.creative === cria && !m._inv);
     const tot = cands.reduce((a,m)=>a+m.leads,0);
     if(!tot) continue;
+    e.used = true;
+    e.keys.forEach(k => usedKeys.add(k));
     for(const m of cands) m._inv = e.valor * (m.leads/tot);
+  }
+  // 3ª passada: anúncios com gasto no período que NÃO têm nenhum lead atribuído
+  // entram na tabela mesmo assim — a ideia é acompanhar TODOS os criativos,
+  // não só os que trouxeram lead.
+  for(const k in spendAd){
+    if(usedKeys.has(k) || map[k]) continue;
+    const meta = spendAdMeta[k];
+    if(fCreative.size && !fCreative.has(meta.anuncio)) continue;
+    const m = newCreativeRow(k, meta.anuncio, meta.campaign || '(sem campanha)');
+    m._inv = spendAd[k];
+    map[k] = m; list.push(m);
   }
   for(const m of list){
     let inv = m._inv || 0;
@@ -1093,6 +1209,8 @@ function creativeStats(data, period){
       if(spendCampNoAd[c] && leadsCamp[c]) inv += spendCampNoAd[c] * (m.byCamp[c] / leadsCamp[c]);
     }
     m.invest = inv;
+    m.status = adStatus(m.campaign, m.creative);
+    m.statusRank = m.status === 'ATIVO' ? 2 : (m.status === 'INATIVO' ? 1 : 0);
     finishCreativeMetrics(m, inv);
   }
   return list;
@@ -1112,6 +1230,7 @@ function finishCreativeMetrics(m, inv){
 /* Status Escalar / Observar / Matar por CPL qualificado vs meta */
 let CPLQ_GOAL = (()=>{ try{ return Number(localStorage.getItem('tatsuo_cplq_goal'))||300; }catch(e){ return 300; } })();
 function creativeStatus(m){
+  if(m.status === 'INATIVO') return ['off','Pausado'];
   if(!m.invest) return ['none','Sem custo'];
   if(m.cplQual !== Infinity && m.cplQual <= CPLQ_GOAL) return ['esc','Escalar'];
   if(m.leads < 10) return ['obs','Observar'];
@@ -1173,20 +1292,24 @@ function renderCreativesTable(list, listB){
     return (na - nb) * dir;
   });
   if(!rows.length){
-    tbody.innerHTML = `<tr><td colspan="14"><div class="empty-state">Nenhum criativo corresponde aos filtros.</div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="15"><div class="empty-state">Nenhum criativo corresponde aos filtros.</div></td></tr>`;
     return;
   }
   const byCampaign = CREATIVE_LEVEL === 'campaign';
   tbody.innerHTML = rows.map(m => {
     const [scls, stxt] = creativeStatus(m);
+    const statusCell = m.status === 'ATIVO'   ? '<span class="pill on">ATIVO</span>'
+                     : m.status === 'INATIVO' ? '<span class="pill off">INATIVO</span>'
+                     : '<span class="pill unk" title="A aba gasto_campanha não informou status para este item. Crie/preencha a coluna \'status\' com ATIVO ou INATIVO.">—</span>';
     const checked = CREATIVE_COMPARE.has(m.key) ? ' checked' : '';
     const bm = listB ? bmap[m.key] : null;
     const bc = (html) => listB ? `<div class="cellB">B: ${html}</div>` : '';
     return `
-    <tr${CREATIVE_FILTER === m.creative ? ' style="background:rgba(192,57,43,.08)"' : ''}>
+    <tr class="${m.status === 'INATIVO' ? 'is-off' : ''}"${CREATIVE_FILTER === m.creative ? ' style="background:rgba(192,57,43,.08)"' : ''}>
       ${byCampaign ? '' : `<td class="wrap" style="max-width:200px;white-space:normal;line-height:1.4;color:#8A9AAB;font-size:12px">${esc(m.campaign)}</td>`}
       <td style="width:34px"><input type="checkbox" class="cmp-check" data-creative="${esc(m.key)}"${checked}></td>
       <td class="wrap" style="max-width:260px;white-space:normal;line-height:1.4"><span class="lead-name">${esc(m.creative)}</span></td>
+      <td>${statusCell}</td>
       <td class="num">${m.invest ? fmtBRLshort(m.invest) : '<span class="dim">—</span>'}${bc(bm && bm.invest ? fmtBRLshort(bm.invest) : '—')}</td>
       <td class="num">${fmtNum(m.leads)}${bc(bm ? fmtNum(bm.leads) : '—')}</td>
       <td class="num" style="color:#C0392B;font-weight:600">${fmtNum(m.mql)}${bc(bm ? fmtNum(bm.mql) : '—')}</td>
@@ -1219,6 +1342,7 @@ function renderCreativeCompare(list){
   const best = withCost.length ? Math.min(...withCost.map(m=>m.cplQual)) : null;
   const bestC = withCost.find(m => m.cplQual === best);
   const verdict = m => {
+    if(m.status === 'INATIVO') return '<span class="pill off">Pausado</span>';
     if(!m.invest) return '<span class="pill none">Sem custo</span>';
     if(m.cplQual === Infinity || m.cplQual > CPLQ_GOAL) return '<span class="pill kill">Pausar</span>';
     if(best !== null && m.cplQual === best) return '<span class="pill esc">Escalar</span>';
