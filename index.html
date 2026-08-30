@@ -272,6 +272,8 @@
   .goalbox input{background:var(--bg-2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;font-family:inherit;font-size:14px;font-weight:600;width:110px}
   .goalbox input:focus{outline:none;border-color:var(--accent)}
   .goalbox .note{font-size:11px;color:var(--dim);flex:1;min-width:200px}
+  .goalbox .multi-select{min-width:180px}
+  .goalbox .ms-panel{min-width:200px}
   .pill{font-size:10.5px;font-weight:700;letter-spacing:.04em;padding:4px 10px;border-radius:999px;display:inline-block;white-space:nowrap}
   .pill.esc{color:#3FB37F;background:rgba(63,179,127,.14)}
   .pill.obs{color:#E8C547;background:rgba(232,197,71,.12)}
@@ -501,6 +503,8 @@
         <div class="goalbox">
           <label>Meta de CPL qualificado</label>
           <input type="number" id="cplq-goal" min="0" step="10">
+          <label>Status</label>
+          <div id="f-adstatus" class="multi-select"></div>
           <span class="note">Define a ação Escalar / Observar / Matar — recalcula ao vivo. Criativo INATIVO aparece como Pausado. CPL qualificado = investido ÷ (MQL + Q-MQL).</span>
           <div class="level-toggle" id="level-toggle">
             <button type="button" data-level="creative" class="active">Criativos</button>
@@ -894,6 +898,12 @@ function bootstrap(){
     ...SPEND_RAW.map(s => (s.anuncio||'').trim()),
   ].filter(Boolean))].sort();
   MS.creative = new MultiSelect(document.getElementById('f-creative'),  { allLabel:'Todos os criativos', options:creatives, onChange:render });
+  // filtro de status do criativo — vale só para o bloco de criativos
+  MS.adstatus = new MultiSelect(document.getElementById('f-adstatus'), {
+    allLabel:'Todos os status',
+    options: AD_STATUS_OPTIONS,
+    onChange: ()=> renderCreatives(getFiltered(), CMP_ON ? getFiltered('B') : null),
+  });
 
   // suggest sensible default date range
   const dates = RAW.map(r=>r.dt).filter(Boolean).sort((a,b)=>a-b);
@@ -910,6 +920,7 @@ function bootstrap(){
     document.getElementById(id).addEventListener('change', render));
   document.getElementById('clear-btn').addEventListener('click', ()=>{
     MS.camp.clear(); MS.tag.clear(); MS.stage.clear(); MS.source.clear(); MS.pipeline.clear(); MS.creative.clear();
+    if(MS.adstatus) MS.adstatus.clear();
     if(dates.length){
       document.getElementById('f-start').value = dates[0].toISOString().slice(0,10);
       document.getElementById('f-end').value   = dates[dates.length-1].toISOString().slice(0,10);
@@ -1102,6 +1113,16 @@ function adStatus(campaign, anuncio){
   return '';
 }
 
+/* Filtro de status do bloco de criativos (ATIVO / INATIVO / Sem status).
+   Nada selecionado = mostra tudo, igual aos filtros do topo. */
+const AD_STATUS_OPTIONS = ['ATIVO','INATIVO','Sem status'];
+function statusLabel(v){ return v || 'Sem status'; }
+function filterByAdStatus(list){
+  const sel = MS.adstatus ? MS.adstatus.getValues() : new Set();
+  if(!sel.size) return list;
+  return list.filter(m => sel.has(statusLabel(m.status)));
+}
+
 function newCreativeRow(key, creative, campaign){
   return { key, creative, campaign, leads:0, mql:0, qmql:0, nmql:0, apres:0, vendas:0, byCamp:{} };
 }
@@ -1169,7 +1190,7 @@ function creativeStats(data, period){
       m.statusRank = m.status === 'ATIVO' ? 2 : (m.status === 'INATIVO' ? 1 : 0);
       finishCreativeMetrics(m, inv);
     }
-    return list;
+    return filterByAdStatus(list);
   }
   // 1ª passada: match exato campanha+anúncio; marca anúncios já consumidos
   const usedKeys = new Set();
@@ -1213,7 +1234,7 @@ function creativeStats(data, period){
     m.statusRank = m.status === 'ATIVO' ? 2 : (m.status === 'INATIVO' ? 1 : 0);
     finishCreativeMetrics(m, inv);
   }
-  return list;
+  return filterByAdStatus(list);
 }
 
 function finishCreativeMetrics(m, inv){
@@ -1251,7 +1272,8 @@ function renderCreativeKPIs(list, listB){
   if(!el) return;
   const t = list.reduce((a,m)=>({invest:a.invest+m.invest, leads:a.leads+m.leads, mql:a.mql+m.mql, qual:a.qual+m.qualified, vendas:a.vendas+m.vendas}), {invest:0,leads:0,mql:0,qual:0,vendas:0});
   const spendTotal = totalSpend(getFilteredSpend());
-  const unattr = Math.max(0, spendTotal - t.invest);
+  const stSel = MS.adstatus ? MS.adstatus.getValues() : new Set();
+  const unattr = stSel.size ? 0 : Math.max(0, spendTotal - t.invest);
   const cpl = t.leads ? t.invest/t.leads : 0;
   const cplQ = t.qual ? t.invest/t.qual : 0;
   const cplM = t.mql ? t.invest/t.mql : 0;
@@ -1261,7 +1283,7 @@ function renderCreativeKPIs(list, listB){
     B = { ...tb, cpl: tb.leads ? tb.invest/tb.leads : 0, cplQ: tb.qual ? tb.invest/tb.qual : 0, cplM: tb.mql ? tb.invest/tb.mql : 0 };
   }
   const kpis = [
-    ['Investido', t.invest ? fmtBRLshort(t.invest) : '—', unattr > 1 ? '+ ' + fmtBRLshort(unattr) + ' não atribuído' : '', B ? `B: ${B.invest?fmtBRLshort(B.invest):'—'}${deltaHtml(t.invest, B.invest, false, true)}` : ''],
+    ['Investido', t.invest ? fmtBRLshort(t.invest) : '—', unattr > 1 ? '+ ' + fmtBRLshort(unattr) + ' não atribuído' : (stSel.size ? 'só ' + [...stSel].join(' + ') : ''), B ? `B: ${B.invest?fmtBRLshort(B.invest):'—'}${deltaHtml(t.invest, B.invest, false, true)}` : ''],
     ['Leads', fmtNum(t.leads), '', B ? `B: ${fmtNum(B.leads)}${deltaHtml(t.leads, B.leads, false)}` : ''],
     ['CPL', t.invest ? fmtBRL(cpl) : '—', 'custo por lead', B ? `B: ${B.invest?fmtBRL(B.cpl):'—'}${(t.invest&&B.invest)?deltaHtml(cpl, B.cpl, true):''}` : ''],
     ['Qualificados', fmtNum(t.qual), t.leads ? (t.qual/t.leads*100).toFixed(1).replace('.',',')+'% dos leads' : '', B ? `B: ${fmtNum(B.qual)}${deltaHtml(t.qual, B.qual, false)}` : ''],
@@ -1292,7 +1314,8 @@ function renderCreativesTable(list, listB){
     return (na - nb) * dir;
   });
   if(!rows.length){
-    tbody.innerHTML = `<tr><td colspan="15"><div class="empty-state">Nenhum criativo corresponde aos filtros.</div></td></tr>`;
+    const stSel = MS.adstatus ? [...MS.adstatus.getValues()] : [];
+    tbody.innerHTML = `<tr><td colspan="15"><div class="empty-state">Nenhum criativo corresponde aos filtros${stSel.length ? ' (status: ' + esc(stSel.join(', ')) + ')' : ''}.</div></td></tr>`;
     return;
   }
   const byCampaign = CREATIVE_LEVEL === 'campaign';
