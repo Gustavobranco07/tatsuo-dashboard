@@ -172,6 +172,28 @@
   .chart-wrap{position:relative;min-height:340px}
   .chart-wrap.tall{min-height:380px}
 
+  /* Barra de abas. Mesmo visual do toggle de níveis, mas em escala de
+     navegação: separa os relatórios em vez de alternar um recorte. */
+  .abas{display:flex;gap:0;border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:22px;width:fit-content}
+  .abas button{background:var(--bg-2);border:none;color:var(--muted);padding:11px 22px;font-family:inherit;font-size:12px;letter-spacing:.14em;text-transform:uppercase;cursor:pointer;transition:background .15s,color .15s}
+  .abas button + button{border-left:1px solid var(--border)}
+  .abas button.active{background:var(--primary);color:#fff;font-weight:600}
+
+  .nota-perfil{margin-top:12px;font-size:11px;color:var(--dim);line-height:1.5}
+  /* Rótulo de perfil é mais longo que nome de etapa e não é sigla: coluna
+     mais larga, sem caixa alta. */
+  /* painéis da dupla têm alturas bem diferentes (8 faixas de porte contra 4
+     de faturamento); sem isto o menor estica e sobra uma caixa vazia */
+  #aba-perfil .two-col{align-items:start}
+  #aba-perfil .funnel-row{grid-template-columns:200px 1fr 80px}
+  #aba-perfil .funnel-row .name{text-transform:none;letter-spacing:.02em;font-size:12px;color:var(--text)}
+  #aba-perfil .kpi-grid .panel-head h3{font-family:'Bebas Neue',sans-serif;font-size:34px}
+  .tab-conv{width:100%;border-collapse:collapse;font-size:13px}
+  .tab-conv th{text-align:left;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);padding:10px 12px;border-bottom:1px solid var(--border);white-space:nowrap}
+  .tab-conv td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.04)}
+  .tab-conv tr:last-child td{border-bottom:none}
+  .tab-conv .num{text-align:right}
+
   .two-col{display:grid;grid-template-columns:.95fr 1.05fr;gap:18px}
   /* Os dois painéis já esticam para a altura da linha do grid; o painel
      vira coluna flex para o gráfico ocupar a sobra em vez de deixar um
@@ -373,7 +395,8 @@
     .page-head h1{font-size:36px}
   }
   @media (max-width: 640px){
-    .topbar{padding:14px 18px}
+    .topbar{padding:14px 18px;flex-wrap:wrap;row-gap:8px}
+    .topbar .meta{gap:12px;flex-wrap:wrap}
     main{padding:18px 18px 40px}
     .filters{grid-template-columns:1fr;padding:14px}
     .kpi-grid{grid-template-columns:1fr}
@@ -382,6 +405,12 @@
     .chart-wrap{min-height:280px}
     .page-head h1{font-size:30px}
     .section-head .desc{text-align:left}
+    /* as colunas fixas do perfil (200px de rótulo) viram min-content do grid
+       e empurram a página para fora da tela no celular */
+    #aba-perfil .panel{min-width:0}
+    #aba-perfil .funnel-row{grid-template-columns:108px 1fr 54px;gap:10px}
+    #aba-perfil .funnel-row .name{font-size:11px;overflow-wrap:anywhere}
+    .abas{overflow-x:auto}
   }
   /* ---------- COMPARAR PERÍODOS ---------- */
   .cmp-btn{display:inline-flex;align-items:center;gap:6px;padding:0 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--muted);font-size:12px;white-space:nowrap}
@@ -444,10 +473,17 @@
       <!-- PAGE HEADER -->
       <div class="page-head">
         <div>
-          <h1>RELATÓRIO DE <span class="accent">CAMPANHAS</span></h1>
-          <p>Investimento, custo por lead, custo por venda e progressão de pipeline em tempo real — segmentados por origem, qualificação e estágio comercial. <span id="spend-status" style="color:var(--dim);font-size:12px;display:block;margin-top:6px"></span></p>
+          <h1 id="titulo-aba">RELATÓRIO DE <span class="accent">CAMPANHAS</span></h1>
+          <p id="desc-aba">Investimento, custo por lead, custo por venda e progressão de pipeline em tempo real — segmentados por origem, qualificação e estágio comercial.</p>
+          <p><span id="spend-status" style="color:var(--dim);font-size:12px;display:block;margin-top:6px"></span></p>
         </div>
       </div>
+      <!-- ABAS -->
+      <div class="abas" id="abas">
+        <button type="button" data-aba="campanhas" class="active">Campanhas</button>
+        <button type="button" data-aba="perfil">Perfil do lead</button>
+      </div>
+
       <!-- FILTERS -->
       <div class="filters" id="filters">
         <div class="field field-periodo">
@@ -504,7 +540,8 @@
         <button class="clear-btn" id="clear-btn"><span class="x">×</span> Limpar filtros</button>
       </div>
 
-      <!-- INVESTIMENTO (total x atribuído) -->
+      <div id="aba-campanhas">
+      <!-- INVESTIMENTO (total x atribuído) — só faz sentido na aba de campanhas -->
       <div class="metrics-strip">
         <div class="summary-pill" id="summary-pill">
           <div><div class="k">Investido — total</div><div class="v cost" id="sm-spend">—</div></div>
@@ -693,6 +730,9 @@
           </div>
         </div>
       </section>
+      </div><!-- /aba-campanhas -->
+
+      <div id="aba-perfil" hidden></div>
     </main>
   </div>
 
@@ -816,6 +856,99 @@ const GRUPOS_CONSOLIDADOS = [
                                            'Reunião Realizada','Entrevista Realizada','Fechamento'] },
   { grupo:'Venda',                 etapas:['Venda'] }
 ];
+
+/* =========================================================
+   PERFIL DO LEAD — normalização das respostas do formulário
+
+   Os três campos abaixo vêm de perguntas que mudaram de formato ao longo do
+   tempo, então a mesma resposta aparece escrita de várias formas. Aqui elas
+   viram faixas comparáveis. Os valores crus continuam na linha: a tabela de
+   leads mostra o que veio do CRM.
+========================================================= */
+
+/* Porte: duas grades diferentes de resposta conviveram. Uma corta em 1-5 e
+   5-9, outra em 1-9. NÃO juntar 1-5 com 5-9: eles convertem a 1,6% e 12,4%
+   respectivamente, e fundir os dois apaga o achado mais útil da aba. O
+   "1 a 9" fica como faixa própria, rotulada como grade ampla. */
+const PORTE_ORDEM = ['Sem funcionários', '1 a 5', '5 a 9', '1 a 9', '10 a 29', '30 a 49', '50 a 100', 'Acima de 100'];
+const PORTE_PARES = {
+  '1-5': '1 a 5',
+  '5-9': '5 a 9',
+  '1-9': '1 a 9',
+  '10-29': '10 a 29',
+  '30-49': '30 a 49',
+  '50-100': '50 a 100',
+  '51-100': '50 a 100',
+};
+
+function faixaPorte(txt){
+  const t = semAcento(txt).replace(/colaboradores?/g, ' ').replace(/[^a-z0-9]+/g, ' ').trim();
+  if(!t) return '';
+  if(/nao tenho|nenhum|sem funcionario/.test(t)) return 'Sem funcionários';
+  if(/acima de 100|mais de 100/.test(t)) return 'Acima de 100';
+  const m = t.match(/^(\d+)\s*a\s*(\d+)$/);
+  if(m) return PORTE_PARES[m[1] + '-' + m[2]] || '';
+  return '';   // resposta em texto livre; não force numa faixa
+}
+
+/* Faturamento: uma pergunta responde por mês, outra por ano, e as faixas não
+   coincidem — "até R$ 100 mil/mês" são até R$ 1,2 mi/ano, enquanto a outra
+   corta em R$ 1 mi. Tudo vai para anual em 4 faixas amplas; a aproximação
+   chega a 20% nas bordas, o que com 285 respostas é melhor do que fatiar em
+   células de 5 leads. Chave = resposta normalizada (minúscula, sem acento). */
+const FATURAMENTO_ORDEM = ['Até R$ 1 mi/ano', 'R$ 1 a 5 mi/ano', 'R$ 5 a 50 mi/ano', 'Acima de R$ 50 mi/ano'];
+const FATURAMENTO_MAPA = {
+  'menos de r 1 milhao ano': 'Até R$ 1 mi/ano',
+  'ate r 100 mil mes': 'Até R$ 1 mi/ano',                       // até 1,2 mi/ano
+
+  'entre r 1 milhao e r 5 milhoes ano': 'R$ 1 a 5 mi/ano',
+  'entre r 1 milhao a r 5 milhoes ano': 'R$ 1 a 5 mi/ano',
+  'entre r 100 mil e r 300 mil mes': 'R$ 1 a 5 mi/ano',         // 1,2 a 3,6 mi/ano
+
+  'entre r 5 milhoes e r 50 milhoes ano': 'R$ 5 a 50 mi/ano',
+  'entre r 5 milhoes a r 15 milhoes ano': 'R$ 5 a 50 mi/ano',
+  'entre r 15 milhoes a r 50 milhoes ano': 'R$ 5 a 50 mi/ano',
+  'entre r 300 mil e r 1 milhao mes': 'R$ 5 a 50 mi/ano',       // 3,6 a 12 mi/ano
+  'acima de r 1 milhao mes': 'R$ 5 a 50 mi/ano',                // acima de 12 mi/ano
+
+  'acima de r 50 milhoes ano': 'Acima de R$ 50 mi/ano',
+};
+
+/* Respostas que não são faixa ("não informado", um valor solto de
+   6.000.000). Ficam fora em vez de cair numa faixa errada — 6 leads. */
+const _faturamentoDesconhecido = new Set();
+
+function faixaFaturamento(txt){
+  const bruto = String(txt || '').trim();
+  if(!bruto) return '';
+  const chave = semAcento(bruto).replace(/[^a-z0-9]+/g, ' ').trim();
+  const faixa = FATURAMENTO_MAPA[chave];
+  if(faixa) return faixa;
+  /* Avisa uma vez por resposta nova: assim uma grafia inédita aparece no
+     console em vez de sumir calada da distribuição. */
+  if(!_faturamentoDesconhecido.has(chave)){
+    _faturamentoDesconhecido.add(chave);
+    console.warn('[perfil] faturamento sem faixa:', JSON.stringify(bruto));
+  }
+  return '';
+}
+
+/* Segmento é texto livre: 1.639 valores distintos para 4.478 respostas, e
+   1.160 aparecem uma única vez. Normalizar caixa, acento e pontuação junta
+   as grafias e reduz para 1.454 — ainda muito, então a tela mostra o top N
+   e agrupa o resto. */
+function normSegmento(txt){
+  /* NFKD, e não NFD: alguém respondeu "Movelaria" em caracteres matemáticos
+     Unicode (𝑴𝒐𝒗𝒆𝒍𝒂𝒓𝒊𝒂), que o NFD não converte e o filtro de a-z
+     descartaria. A decomposição de compatibilidade resolve isso. */
+  return String(txt || '').normalize('NFKD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+/** Primeira letra maiúscula, para exibir o segmento normalizado. */
+function titulo(s){
+  return String(s || '').replace(/\b[a-z]/, (c) => c.toUpperCase());
+}
 
 /** etapa do CRM -> nome do grupo */
 const GRUPO_DE = new Map();
@@ -1457,6 +1590,11 @@ function loadData(){
             meetDone,
             meetDt: meetDone || meetSched,
             closer: pick('closer'),
+            // perfil do lead: faixas comparáveis; o valor cru segue na linha
+            porte: faixaPorte(pick('nro_funcionarios')),
+            faturamentoAnual: faixaFaturamento(pick('faturamento')),
+            segmentoNorm: normSegmento(pick('segmento_empresa','segmento','Segmento','segmento_da_empresa','setor','Setor')),
+            periodoContato: pick('melhor_periodo_contato'),
             motivo: pick('motivo_perda'),
             motivoId: pick('motivo_perda_id'),
             // vem booleano do snapshot; string quando a fonte é o CSV antigo
@@ -1471,6 +1609,10 @@ function loadData(){
             lastMed:  String(lastMed).trim(),
             valor: parseValor(r.valor),
             dt: parseDate(r.dt_criacao_oportunidade || r.dt_criacao_contato),
+            /* `dt` é só a data: o parseDate descarta a hora, e o filtro de
+               período compara contra limites de dia. Para o gráfico de
+               horário de entrada é preciso o carimbo completo. */
+            dtHora: parseDateTime(r.dt_criacao_oportunidade),
             status: (r.status||'').trim(),
           };
         });
@@ -1588,6 +1730,7 @@ function bootstrap(){
   wireMotivos();
   wireCreativesPager();
   wireBuscaLeads();
+  wireAbas();
   wireCreativesSort();
   wireCreativeControls();
   wireCompare();
@@ -1792,6 +1935,11 @@ function render(){
   atualizarEtapas();
   const data = getFiltered();
   const dataB = CMP_ON ? getFiltered('B') : null;
+
+  /* Só a aba visível desenha: gráfico criado em container escondido nasce
+     com tamanho zero e não se recupera sozinho. */
+  if(ABA_ATIVA === 'perfil'){ renderPerfil(data); return; }
+
   renderSummary(data, dataB);
   renderKPIs(data, dataB);
   renderOriginSummary(data, dataB);
@@ -1800,6 +1948,303 @@ function render(){
   renderLossReasons(data, dataB);
   renderCreatives(data, dataB);
   renderLeadsTable(data);
+}
+
+
+/* =========================================================
+   ABA PERFIL DO LEAD
+
+   Duas perguntas: quem chega (retrato de quem entra no funil) e quem
+   converte (quais perfis avançam). A segunda é a que muda decisão de mídia.
+
+   "Chegou à apresentação" usa o MESMO critério de creativeStats — índice em
+   STAGE_ORDER a partir de "Apresentação Agendada" —, em vez de uma regra
+   paralela que poderia divergir da aba de campanhas.
+========================================================= */
+
+function chegouApresentacao(r){
+  const apres = STAGE_ORDER.indexOf('Apresentação Agendada');
+  const i = STAGE_ORDER.indexOf(r.stageView);
+  return apres !== -1 && i !== -1 && i >= apres;
+}
+const ganhou = (r) => r.status === 'won';
+
+/**
+ * Agrupa as linhas por uma dimensão de perfil.
+ * Devolve [{rotulo, leads, apres, ganhos}], ordenado por volume.
+ * `ordem` fixa a sequência das faixas quando ela tem significado.
+ */
+function agruparPerfil(data, campo, ordem, campoRotulo){
+  const m = new Map();
+  for(const r of data){
+    const k = String(r[campo] || '').trim();
+    if(!k) continue;
+    if(!m.has(k)) m.set(k, { rotulo: k, leads: 0, apres: 0, ganhos: 0, grafias: campoRotulo ? new Map() : null });
+    const e = m.get(k);
+    e.leads++;
+    if(chegouApresentacao(r)) e.apres++;
+    if(ganhou(r)) e.ganhos++;
+    /* Segmento é texto livre: agrupamos pelo valor normalizado, mas exibimos
+       a grafia original mais comum — "Serviços" lê melhor que "servicos". */
+    if(campoRotulo){
+      const g = String(r[campoRotulo] || '').trim();
+      if(g) e.grafias.set(g, (e.grafias.get(g) || 0) + 1);
+    }
+  }
+  const lista = [...m.values()];
+  for(const e of lista){
+    if(e.grafias && e.grafias.size){
+      e.rotulo = [...e.grafias.entries()].sort((x, y) => y[1] - x[1])[0][0];
+    }
+    delete e.grafias;
+  }
+  if(ordem) lista.sort((a, b) => ordem.indexOf(a.rotulo) - ordem.indexOf(b.rotulo));
+  else lista.sort((a, b) => b.leads - a.leads);
+  return lista;
+}
+
+/** Barras de distribuição, no mesmo visual do funil. */
+function barrasDistribuicao(itens, nota){
+  if(!itens.length) return '<div class="empty-state">Sem dados neste recorte.</div>';
+  const total = itens.reduce((a, x) => a + x.leads, 0);
+  const maior = Math.max(...itens.map(x => x.leads));
+  const linhas = itens.map((x, i) => {
+    const cor = corDaEtapa(i, itens.length);
+    return `
+      <div class="funnel-row" style="cursor:default">
+        <div class="name">${esc(x.rotulo)}</div>
+        <div class="track">
+          <span class="seg" style="width:${(x.leads / maior * 100).toFixed(1)}%;background:${cor}">
+            <span class="seg-label">${(x.leads / total * 100).toFixed(1).replace('.', ',')}%</span>
+          </span>
+        </div>
+        <div class="val">${fmtNum(x.leads)}</div>
+      </div>`;
+  }).join('');
+  return linhas + (nota ? `<div class="nota-perfil">${nota}</div>` : '');
+}
+
+/**
+ * Tabela de conversão.
+ *
+ * `ganhoAbsoluto` mostra o ganho só como número, sem percentual: é o caso do
+ * faturamento, em que as células têm 2 a 9 ganhos e uma taxa sugeriria uma
+ * precisão que o dado não tem.
+ */
+function tabelaConversao(itens, ganhoAbsoluto){
+  if(!itens.length) return '<div class="empty-state">Sem dados neste recorte.</div>';
+  const linhas = itens.map(x => `
+    <tr>
+      <td>${esc(x.rotulo)}</td>
+      <td class="num">${fmtNum(x.leads)}</td>
+      <td class="num">${fmtNum(x.apres)}</td>
+      <td class="num"><b>${(x.apres / x.leads * 100).toFixed(1).replace('.', ',')}%</b></td>
+      <td class="num">${fmtNum(x.ganhos)}</td>
+      ${ganhoAbsoluto ? '' : '<td class="num"><b>' +
+        (x.ganhos / x.leads * 100).toFixed(1).replace('.', ',') + '%</b></td>'}
+    </tr>`).join('');
+  return `
+    <div class="table-wrap">
+      <table class="tab-conv">
+        <thead><tr>
+          <th>Faixa</th><th class="num">Leads</th>
+          <th class="num">Apresentação</th><th class="num">% apres.</th>
+          <th class="num">Ganhos</th>${ganhoAbsoluto ? '' : '<th class="num">% ganho</th>'}
+        </tr></thead>
+        <tbody>${linhas}</tbody>
+      </table>
+    </div>`;
+}
+
+function painel(titulo, hint, corpo){
+  return `
+    <div class="panel">
+      <div class="panel-head">
+        <h3>${titulo}</h3>
+        ${hint ? `<div class="hint">${hint}</div>` : ''}
+      </div>
+      ${corpo}
+    </div>`;
+}
+
+function renderPerfil(data){
+  const alvo = document.getElementById('aba-perfil');
+
+  const comPorte = data.filter(r => r.porte).length;
+  const comSeg   = data.filter(r => r.segmentoNorm).length;
+  const comFat   = data.filter(r => r.faturamentoAnual).length;
+  const apres    = data.filter(chegouApresentacao).length;
+  const ganhos   = data.filter(ganhou).length;
+
+  const porte  = agruparPerfil(data, 'porte', PORTE_ORDEM);
+  const fat    = agruparPerfil(data, 'faturamentoAnual', FATURAMENTO_ORDEM);
+  const per    = agruparPerfil(data, 'periodoContato', ['Manhã', 'Tarde', 'Noite']);
+
+  /* Segmento é texto livre com cauda enorme: o top 15 cobre pouco mais de um
+     terço. Mostrar tudo seria ilegível e mostrar só o top esconderia o
+     tamanho da cauda — daí o "Outros" explícito e a nota. */
+  const segTodos = agruparPerfil(data, 'segmentoNorm', null, 'segmento');
+  const segTop = segTodos.slice(0, 15);
+  const segResto = segTodos.slice(15);
+  const segParaBarras = segResto.length
+    ? segTop.concat([{
+        rotulo: 'Outros (' + fmtNum(segResto.length) + ' segmentos)',
+        leads: segResto.reduce((a, x) => a + x.leads, 0),
+        apres: segResto.reduce((a, x) => a + x.apres, 0),
+        ganhos: segResto.reduce((a, x) => a + x.ganhos, 0),
+      }])
+    : segTop;
+
+  const pct = (n, d) => d ? (n / d * 100).toFixed(1).replace('.', ',') + '%' : '—';
+
+  alvo.innerHTML = `
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <div class="label">Bloco 01 — Retrato de quem chega</div>
+          <h2>QUEM ESTÁ ENTRANDO NO FUNIL</h2>
+        </div>
+        <div class="desc">Perfil declarado no formulário, sobre os leads do recorte selecionado nos filtros acima.</div>
+      </div>
+
+      <div class="kpi-grid">
+        <div class="panel">
+          <div class="panel-head"><h3>${fmtNum(data.length)}</h3><div class="hint">leads no recorte</div></div>
+          <div class="nota-perfil">${pct(comPorte, data.length)} informaram porte · ${pct(comSeg, data.length)} segmento · ${pct(comFat, data.length)} faturamento</div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>${pct(apres, data.length)}</h3><div class="hint">chegam à apresentação</div></div>
+          <div class="nota-perfil">${fmtNum(apres)} de ${fmtNum(data.length)} oportunidades</div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>${pct(ganhos, data.length)}</h3><div class="hint">viram venda</div></div>
+          <div class="nota-perfil">${fmtNum(ganhos)} de ${fmtNum(data.length)} oportunidades</div>
+        </div>
+      </div>
+
+      <div class="two-col">
+        ${painel('Porte da empresa', fmtNum(comPorte) + ' respostas', barrasDistribuicao(porte,
+          'A faixa "1 a 9" vem de uma grade de resposta mais ampla, usada em parte dos formulários. Não é somável com "1 a 5" e "5 a 9".'))}
+        ${painel('Faturamento anual', fmtNum(comFat) + ' respostas', barrasDistribuicao(fat,
+          'Respostas mensais foram convertidas para anual e encaixadas na faixa mais próxima.'))}
+      </div>
+
+      <div class="two-col" style="margin-top:18px">
+        ${painel('Segmento', fmtNum(comSeg) + ' respostas', barrasDistribuicao(segParaBarras,
+          'Campo de texto livre: ' + fmtNum(segTodos.length) + ' valores distintos. O top 15 cobre ' +
+          pct(segTop.reduce((a, x) => a + x.leads, 0), comSeg) + ' das respostas.'))}
+        ${painel('Melhor período para contato', fmtNum(per.reduce((a, x) => a + x.leads, 0)) + ' respostas', barrasDistribuicao(per))}
+      </div>
+
+      <div class="panel" style="margin-top:18px">
+        <div class="panel-head">
+          <h3>Horário de entrada do lead</h3>
+          <div class="hint">Pela hora de criação da oportunidade</div>
+        </div>
+        <div class="chart-wrap" id="chart-hora-wrap"><canvas id="chart-hora"></canvas></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <div class="label">Bloco 02 — Perfis que avançam</div>
+          <h2>QUEM CONVERTE</h2>
+        </div>
+        <div class="desc">
+          Dois marcos lado a lado: chegar à apresentação (mais massa, bom para comparar perfis)
+          e virar venda (confirma o sinal). Onde os dois concordam, a leitura é sólida.
+        </div>
+      </div>
+
+      ${painel('Por porte da empresa', '', tabelaConversao(porte))}
+      <div style="height:18px"></div>
+      ${painel('Por segmento', 'Top 15 por volume', tabelaConversao(segTop))}
+      <div style="height:18px"></div>
+      ${painel('Por melhor período para contato', '', tabelaConversao(per))}
+      <div style="height:18px"></div>
+      ${painel('Por faturamento anual', 'Só ' + fmtNum(comFat) + ' respostas — o ganho aparece em número absoluto, sem taxa',
+        tabelaConversao(fat, true))}
+    </section>`;
+
+  renderGraficoHora(data);
+}
+
+/** Distribuição por hora do dia. 24 barras, uma por hora. */
+function renderGraficoHora(data){
+  const wrap = document.getElementById('chart-hora-wrap');
+  if(!wrap) return;
+  wrap.innerHTML = '<canvas id="chart-hora"></canvas>';
+
+  const horas = new Array(24).fill(0);
+  let semHora = 0;
+  for(const r of data){
+    if(r.dtHora) horas[r.dtHora.getHours()]++;
+    else semHora++;
+  }
+
+  if(charts.hora) charts.hora.destroy();
+  charts.hora = new Chart(document.getElementById('chart-hora'), {
+    type: 'bar',
+    data: {
+      labels: horas.map((_, h) => String(h).padStart(2, '0') + 'h'),
+      datasets: [{ label: 'Leads', data: horas, backgroundColor: '#C0392B', borderRadius: 4, maxBarThickness: 26 }],
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#181818', borderColor: '#2A2A2A', borderWidth: 1, padding: 12,
+          callbacks: { label: (c) => ' ' + fmtNum(c.parsed.y) + ' leads' },
+        },
+      },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#A0A0A0', font: { family: 'Outfit', size: 11 } } },
+        y: { grid: { color: 'rgba(255,255,255,.04)' }, ticks: { color: '#A0A0A0', font: { family: 'Outfit' } } },
+      },
+    },
+  });
+}
+
+/* Abas. Chart.js mede o container na criação, e num container escondido isso
+   dá zero — então a aba só desenha quando fica visível. */
+let ABA_ATIVA = 'campanhas';
+
+const CABECALHOS = {
+  campanhas: {
+    titulo: 'RELATÓRIO DE <span class="accent">CAMPANHAS</span>',
+    desc: 'Investimento, custo por lead, custo por venda e progressão de pipeline em tempo real — segmentados por origem, qualificação e estágio comercial.',
+  },
+  perfil: {
+    titulo: 'PERFIL DO <span class="accent">LEAD</span>',
+    desc: 'Quem entra no funil e quais perfis avançam — porte, faturamento, segmento e horário de entrada, cruzados com apresentação e venda.',
+  },
+};
+
+function atualizarCabecalho(){
+  const c = CABECALHOS[ABA_ATIVA] || CABECALHOS.campanhas;
+  document.getElementById('titulo-aba').innerHTML = c.titulo;
+  document.getElementById('desc-aba').textContent = c.desc;
+  // o resumo do gasto só faz sentido na aba de campanhas
+  document.getElementById('spend-status').style.display = ABA_ATIVA === 'campanhas' ? '' : 'none';
+}
+
+function wireAbas(){
+  const barra = document.getElementById('abas');
+  if(!barra || barra.dataset.wired) return;
+  barra.dataset.wired = '1';
+  barra.addEventListener('click', (e) => {
+    const btn = e.target.closest('button[data-aba]');
+    if(!btn || btn.classList.contains('active')) return;
+    ABA_ATIVA = btn.dataset.aba;
+    barra.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+    document.getElementById('aba-campanhas').hidden = ABA_ATIVA !== 'campanhas';
+    document.getElementById('aba-perfil').hidden = ABA_ATIVA !== 'perfil';
+    atualizarCabecalho();
+    render();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
 }
 
 /* =========================================================
