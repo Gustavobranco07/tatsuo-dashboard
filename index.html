@@ -166,10 +166,22 @@
   .legend{display:flex;gap:16px;flex-wrap:wrap}
   .legend-item{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
   .legend-item .sw{width:10px;height:10px;border-radius:2px}
-  .chart-wrap{position:relative;height:340px}
-  .chart-wrap.tall{height:380px}
+  /* min-height, e não height: o gráfico precisa poder esticar até o pé do
+     card quando o funil ao lado tem muitas etapas. O JS ainda eleva esse
+     piso conforme o número de etapas, para nenhum nome ser pulado. */
+  .chart-wrap{position:relative;min-height:340px}
+  .chart-wrap.tall{min-height:380px}
 
   .two-col{display:grid;grid-template-columns:.95fr 1.05fr;gap:18px}
+  /* Os dois painéis já esticam para a altura da linha do grid; o painel
+     vira coluna flex para o gráfico ocupar a sobra em vez de deixar um
+     vazio embaixo. Escopo em .two-col porque .panel é usado em outros
+     lugares que não querem isso. */
+  .two-col .panel{display:flex;flex-direction:column}
+  /* flex-basis 0, e não auto: com base auto a altura passaria a depender do
+     conteúdo, e um canvas responsivo dentro de um container medido pelo
+     próprio conteúdo faz o Chart.js entrar em laço de crescimento. */
+  .two-col .chart-wrap{flex:1 1 0}
 
   /* ---------- ORIGIN SUMMARY ---------- */
   .origin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px}
@@ -259,6 +271,23 @@
   }
   .error-card button:hover{background:var(--accent);border-color:var(--accent)}
 
+  .auth-card{
+    max-width:380px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:30px 28px;text-align:center;
+  }
+  .auth-card h3{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:.12em;margin-bottom:6px}
+  .auth-card p{color:var(--muted);font-size:12px;margin-bottom:20px;letter-spacing:.04em}
+  .auth-card input{
+    width:100%;padding:12px 14px;margin-bottom:12px;border:1px solid var(--border);border-radius:8px;
+    background:#0D0D0D;color:var(--text);font-family:inherit;font-size:14px;text-align:center;letter-spacing:.12em;
+  }
+  .auth-card input:focus{outline:none;border-color:var(--primary)}
+  .auth-card button{
+    width:100%;padding:11px 20px;border:1px solid var(--primary);background:var(--primary);color:var(--text);
+    border-radius:8px;font-size:11px;letter-spacing:.2em;text-transform:uppercase;cursor:pointer;
+  }
+  .auth-card button:hover{background:var(--accent);border-color:var(--accent)}
+  .auth-card .msg{color:var(--accent);font-size:12px;margin-top:12px;min-height:16px}
+
   .empty-state{padding:40px 20px;text-align:center;color:var(--muted);font-size:13px}
 
   /* ---------- CREATIVES BLOCK ---------- */
@@ -333,7 +362,7 @@
     .kpi-grid{grid-template-columns:1fr}
     .summary-pill{display:none}
     .panel{padding:16px}
-    .chart-wrap{height:280px}
+    .chart-wrap{min-height:280px}
     .page-head h1{font-size:30px}
     .section-head .desc{text-align:left}
   }
@@ -618,7 +647,7 @@
   <div class="veil" id="veil">
     <div class="spinner"></div>
     <div class="label">CARREGANDO DADOS</div>
-    <div class="sub">Sincronizando com Google Sheets…</div>
+    <div class="sub" id="veil-sub">Sincronizando com o CRM…</div>
     <div class="progress"><span></span></div>
   </div>
 
@@ -632,12 +661,33 @@
     </div>
   </div>
 
+  <!-- SENHA (hidden until needed) -->
+  <div class="veil hide" id="auth-veil" style="display:none">
+    <form class="auth-card" id="auth-form" autocomplete="off">
+      <h3>ACESSO RESTRITO</h3>
+      <p>Informe a senha do dashboard para carregar os dados.</p>
+      <input type="password" id="auth-input" placeholder="senha" autocomplete="current-password">
+      <button type="submit">Entrar</button>
+      <div class="msg" id="auth-msg"></div>
+    </form>
+  </div>
+
 <script>
 /* =========================================================
    CONFIG
 ========================================================= */
-const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQT0oSarkKLYUFQPj8VMkpf06iFbSLe6syaSWy68U-5pC_ElFJ6Szv4AIThT9iYlDN_TGGwGVwRhCX3/pub?gid=0&single=true&output=csv';
+/* Leads e oportunidades vêm do Worker, que fala com a API do GHL.
+   O token do CRM fica lá — nunca nesta página. */
+const API_URL = 'https://tatsuo-dash-api.SEU-SUBDOMINIO.workers.dev/data';
+
+/* Gasto de anúncio continua na planilha: a API do GHL não expõe
+   investimento de mídia. */
 const SPEND_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQT0oSarkKLYUFQPj8VMkpf06iFbSLe6syaSWy68U-5pC_ElFJ6Szv4AIThT9iYlDN_TGGwGVwRhCX3/pub?gid=856785083&single=true&output=csv';
+
+/* Fonte antiga, mantida só para comparar os números durante a migração.
+   Abra o dashboard com ?src=csv para voltar a ler a planilha de leads. */
+const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQT0oSarkKLYUFQPj8VMkpf06iFbSLe6syaSWy68U-5pC_ElFJ6Szv4AIThT9iYlDN_TGGwGVwRhCX3/pub?gid=0&single=true&output=csv';
+const USE_CSV = new URLSearchParams(location.search).get('src') === 'csv';
 
 const TAG_ORDER = ['MQL','Q-MQL','N-MQL'];
 const TAG_COLOR = { 'MQL':'#C0392B', 'Q-MQL':'#E8C547', 'N-MQL':'#5A6B7A' };
@@ -664,36 +714,242 @@ function detectVertical(...parts){
   return '';
 }
 
-const STAGE_ORDER = ['Lead','ClaudIA','Tentando Contato','Em Contato','Apresentação Agendada','Em Negociação','Boca do Gol','Venda'];
-const STAGE_STANDBY = 'Standby';
-// Gradient bordô → dourado, do topo do funil até a venda
-const STAGE_COLOR = {
-  'Lead':'#5A6B7A',
-  'ClaudIA':'#6F4F60',
-  'Tentando Contato':'#8A3F4D',
-  'Em Contato':'#A02E3A',
-  'Apresentação Agendada':'#B73348',
-  'Em Negociação':'#C0392B',
-  'Boca do Gol':'#D4671F',
-  'Venda':'#E8C547',
-  'Standby':'#3A3A3A'
+/* =========================================================
+   ETAPAS DO FUNIL — vêm do CRM, não daqui
+
+   A ordem sai de `position` e a participação no funil sai de `showInFunnel`,
+   ambos lidos da API do GHL e enviados no snapshot. Mexer no funil passa a
+   ser mexer na configuração do pipeline no CRM; ninguém precisa tocar aqui.
+
+   As três variáveis são recalculadas a cada render, porque dependem de quais
+   pipelines estão filtrados no momento.
+========================================================= */
+let PIPELINES = [];        // estrutura vinda do snapshot
+let STAGE_ORDER = [];      // etapas dentro do funil, na ordem do CRM
+let FORA_DO_FUNIL = [];    // etapas com showInFunnel = false
+let STAGE_COLOR = {};
+
+/* Sinônimos: usados SÓ para não duplicar a mesma etapa na visão consolidada,
+   quando pipelines diferentes escrevem o mesmo passo de formas diferentes.
+   Não definem ordem nem participação no funil — isso é o CRM que manda. */
+const STAGE_ALIAS = {
+  'claud ia':'CláudIA', 'claud-ia':'CláudIA', 'claudia':'CláudIA',
+  'leads':'Lead',
+  'reuniao agendada':'Apresentação Agendada',
+  'negociacao':'Em Negociação',
+  'stand by':'Standby', 'stand-by':'Standby',
+  'vendido':'Venda', 'fechado':'Venda', 'venda ganha':'Venda'
 };
+
+/* =========================================================
+   AGRUPAMENTO DA VISÃO CONSOLIDADA
+
+   Os 19 pipelines têm 12 layouts de etapas diferentes. Sem filtro de
+   pipeline isso renderia 25 degraus, com "Dia 3" e "Entrevista Agendada"
+   como passos independentes. Estes seis grupos são o funil que o time usa
+   para raciocinar.
+
+   Vale SÓ quando nenhum pipeline está filtrado. Escolhendo um pipeline, o
+   dashboard volta às etapas exatas do CRM.
+========================================================= */
+const GRUPOS_CONSOLIDADOS = [
+  { grupo:'Lead',                  etapas:['Lead','Aplicação'] },
+  { grupo:'Tentando Contato',      etapas:['Tentando Contato','CláudIA','Abordagem',
+                                           'Dia 1','Dia 2','Dia 3','Dia 4','Dia 5','Dia 6','Dia 7',
+                                           'MQL'] },
+  { grupo:'Em Contato',            etapas:['Em Contato','Em Qualificação'] },
+  { grupo:'Apresentação Agendada', etapas:['Apresentação Agendada','Entrevista','Entrevista Agendada'] },
+  { grupo:'Fechamento',            etapas:['Em Negociação','Boca do Gol','Aguardando Pagamento',
+                                           'Reunião Realizada','Entrevista Realizada','Fechamento'] },
+  { grupo:'Venda',                 etapas:['Venda'] }
+];
+
+/** etapa do CRM -> nome do grupo */
+const GRUPO_DE = new Map();
+for(const g of GRUPOS_CONSOLIDADOS){
+  for(const e of g.etapas) GRUPO_DE.set(e, g.grupo);
+}
+
 function normStage(s){
   if(!s) return '';
   const t = String(s).trim().toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  const map = {
-    'lead':'Lead',
-    'claudia':'ClaudIA','claud ia':'ClaudIA','claud-ia':'ClaudIA',
-    'tentando contato':'Tentando Contato','tentando':'Tentando Contato',
-    'em contato':'Em Contato',
-    'apresentacao agendada':'Apresentação Agendada','apresentação agendada':'Apresentação Agendada','reuniao agendada':'Apresentação Agendada','reunião agendada':'Apresentação Agendada',
-    'em negociacao':'Em Negociação','em negociação':'Em Negociação','negociacao':'Em Negociação',
-    'boca do gol':'Boca do Gol',
-    'venda':'Venda','vendido':'Venda','fechado':'Venda',
-    'standby':'Standby','stand by':'Standby','stand-by':'Standby'
-  };
-  return map[t] || String(s).trim();
+    .normalize('NFD').replace(/[̀-ͯ]/g,'');
+  return STAGE_ALIAS[t] || String(s).trim();
+}
+
+/* Gradiente ardósia → bordô → dourado, distribuído pelo comprimento do funil.
+   Substitui o mapa fixo por nome: funciona para qualquer conjunto de etapas
+   que vier do CRM, inclusive "Dia 1" a "Dia 7". */
+const GRADIENTE = [
+  { t:0,   rgb:[0x5A,0x6B,0x7A] },
+  { t:0.7, rgb:[0xC0,0x39,0x2B] },
+  { t:1,   rgb:[0xE8,0xC5,0x47] }
+];
+function corDaEtapa(i, total){
+  if(total <= 1) return '#C0392B';
+  const t = i / (total - 1);
+  let a = GRADIENTE[0], b = GRADIENTE[GRADIENTE.length-1];
+  for(let k=0; k<GRADIENTE.length-1; k++){
+    if(t >= GRADIENTE[k].t && t <= GRADIENTE[k+1].t){ a = GRADIENTE[k]; b = GRADIENTE[k+1]; break; }
+  }
+  const p = b.t === a.t ? 0 : (t - a.t) / (b.t - a.t);
+  const c = a.rgb.map((v,j) => Math.round(v + (b.rgb[j]-v)*p));
+  return '#' + c.map(v => v.toString(16).padStart(2,'0')).join('');
+}
+
+/**
+ * Recalcula STAGE_ORDER, FORA_DO_FUNIL e STAGE_COLOR a partir dos pipelines
+ * em vista.
+ *
+ * Com um pipeline só filtrado, o funil é exatamente o daquele pipeline. Com
+ * vários, as etapas são unidas por nome e ordenadas pela mediana de
+ * `position` — o melhor palpite de "quão fundo no funil" um passo está,
+ * quando cada pipeline tem um layout diferente.
+ */
+function rebuildStages(nomesSelecionados){
+  const emVista = (nomesSelecionados && nomesSelecionados.size)
+    ? PIPELINES.filter(p => nomesSelecionados.has(p.nome))
+    : PIPELINES;
+
+  const agregado = new Map();   // nome canônico -> { pos:[], dentro, fora }
+  for(const p of emVista){
+    for(const s of p.stages || []){
+      const nome = normStage(s.nome);
+      if(!agregado.has(nome)) agregado.set(nome, { pos:[], dentro:0, fora:0, pipes:0 });
+      const a = agregado.get(nome);
+      a.pos.push(s.position);
+      a.pipes++;
+      s.showInFunnel ? a.dentro++ : a.fora++;
+    }
+  }
+
+  const mediana = arr => { const b=[...arr].sort((x,y)=>x-y); return b[Math.floor(b.length/2)]; };
+
+  const dentro = [], fora = [];
+  for(const [nome, a] of agregado){
+    // "Standby" vem com showInFunnel=false em 13 pipelines e true em um
+    // ("Stand-by"). Maioria decide; empate fica dentro do funil.
+    (a.dentro >= a.fora ? dentro : fora).push({ nome, pos: mediana(a.pos), pipes: a.pipes });
+  }
+
+  /* Empate de posição: a etapa que aparece em mais pipelines vem primeiro.
+     Sem isso "Aguardando Pagamento" (2 pipelines, posição 0) abriria o funil
+     consolidado na frente de "Lead" (17 pipelines), só por ordem alfabética. */
+  const porPosicao = (a,b) =>
+    a.pos - b.pos || b.pipes - a.pipes || a.nome.localeCompare(b.nome,'pt-BR');
+  dentro.sort(porPosicao);
+  fora.sort(porPosicao);
+
+  STAGE_ORDER = dentro.map(x => x.nome);
+  FORA_DO_FUNIL = fora.map(x => x.nome);
+
+  STAGE_COLOR = {};
+  STAGE_ORDER.forEach((nome,i) => { STAGE_COLOR[nome] = corDaEtapa(i, STAGE_ORDER.length); });
+  FORA_DO_FUNIL.forEach(nome => { STAGE_COLOR[nome] = '#3A3A3A'; });
+}
+
+/* Ordem de reserva, usada só quando não há estrutura de pipeline: o modo
+   ?src=csv, que lê a planilha antiga e não tem como saber a configuração do
+   CRM. Serve para a comparação lado a lado continuar funcionando. */
+const ORDEM_LEGADA = ['Lead','CláudIA','ClaudIA','Tentando Contato','Em Contato',
+  'Apresentação Agendada','Em Negociação','Boca do Gol','Venda'];
+
+function rebuildStagesDosDados(rows){
+  const vistos = [...new Set(rows.map(r => r.stage).filter(Boolean))];
+  const idx = s => { const i = ORDEM_LEGADA.indexOf(s); return i === -1 ? 900 : i; };
+  STAGE_ORDER = vistos.filter(s => s !== 'Standby').sort((a,b) => idx(a)-idx(b) || a.localeCompare(b,'pt-BR'));
+  FORA_DO_FUNIL = vistos.filter(s => s === 'Standby');
+  STAGE_COLOR = {};
+  STAGE_ORDER.forEach((nome,i) => { STAGE_COLOR[nome] = corDaEtapa(i, STAGE_ORDER.length); });
+  FORA_DO_FUNIL.forEach(nome => { STAGE_COLOR[nome] = '#3A3A3A'; });
+}
+
+/**
+ * Monta o funil consolidado a partir de GRUPOS_CONSOLIDADOS.
+ *
+ * Etapa do CRM que não esteja em nenhum grupo vai para "fora do funil" e é
+ * anunciada no console. Somar num grupo errado falsearia a conversão, e
+ * descartar faria a soma do funil não bater com o total de oportunidades.
+ */
+function rebuildStagesAgrupados(){
+  const noCrm = new Set();
+  for(const p of PIPELINES) for(const s of p.stages || []) noCrm.add(normStage(s.nome));
+
+  // etapas que o CRM marcou como fora do funil continuam fora
+  const foraPorConfig = new Set(FORA_DO_FUNIL);
+
+  const semGrupo = [...noCrm].filter(e => !GRUPO_DE.has(e) && !foraPorConfig.has(e));
+  if(semGrupo.length){
+    console.warn('[funil] etapas sem grupo em GRUPOS_CONSOLIDADOS, jogadas para fora do funil:', semGrupo);
+  }
+
+  STAGE_ORDER = GRUPOS_CONSOLIDADOS.map(g => g.grupo);
+  FORA_DO_FUNIL = [...foraPorConfig, ...semGrupo];
+
+  STAGE_COLOR = {};
+  STAGE_ORDER.forEach((nome,i) => { STAGE_COLOR[nome] = corDaEtapa(i, STAGE_ORDER.length); });
+  FORA_DO_FUNIL.forEach(nome => { STAGE_COLOR[nome] = '#3A3A3A'; });
+}
+
+/** No modo agrupado, a etapa de uma linha é o grupo dela. */
+function etapaExibida(r, agrupado){
+  if(!agrupado) return r.stage;
+  return GRUPO_DE.get(r.stage) || r.stage;   // sem grupo => fica fora do funil
+}
+
+let MODO_ETAPA = null;   // assinatura de modo + pipelines selecionados
+
+/**
+ * Recalcula as etapas conforme o filtro de pipeline em vigor e carimba
+ * `stageView` em cada linha — a etapa que as agregações devem usar.
+ */
+function atualizarEtapas(){
+  const selecionados = MS.pipeline ? MS.pipeline.getValues() : null;
+  const agrupado = PIPELINES.length > 0 && !(selecionados && selecionados.size);
+
+  let modo;
+  if(!PIPELINES.length){
+    rebuildStagesDosDados(RAW);
+    modo = 'legado';
+  } else {
+    rebuildStages(selecionados);        // define FORA_DO_FUNIL a partir do CRM
+    if(agrupado){ rebuildStagesAgrupados(); modo = 'grupos'; }
+    else modo = 'cru';
+  }
+
+  for(const r of RAW) r.stageView = etapaExibida(r, modo === 'grupos');
+
+  /* O filtro de estágio passa a oferecer grupos ou etapas cruas conforme o
+     modo. Só recria o dropdown quando o modo muda: recriar a cada render
+     fecharia o painel na cara de quem está escolhendo. */
+  /* Recria só quando o conjunto de etapas possíveis muda — ou seja, quando
+     muda o modo ou a seleção de pipelines. Recriar a cada render fecharia o
+     painel na cara de quem está escolhendo. */
+  const assinatura = modo + '|' + [...(selecionados || [])].sort().join('');
+  if(assinatura !== MODO_ETAPA){
+    MODO_ETAPA = assinatura;
+    if(MS.stage) MS.stage.setOptions(opcoesDeEtapa());
+  }
+}
+
+/**
+ * Etapas que o filtro deve oferecer: as presentes nos dados, na ordem do funil.
+ *
+ * Considera o filtro de pipeline, mas nenhum outro: com o Funil Oficial
+ * escolhido a lista traz as etapas dele, e não as dos outros 18. Os demais
+ * filtros (período, tag, origem) ficam de fora de propósito — o dropdown
+ * mudando de conteúdo a cada ajuste de data seria desconcertante.
+ */
+function opcoesDeEtapa(){
+  const pipesSel = MS.pipeline ? MS.pipeline.getValues() : null;
+  const linhas = (pipesSel && pipesSel.size)
+    ? RAW.filter(r => pipesSel.has(r.pipeline))
+    : RAW;
+
+  const presentes = new Set(linhas.map(r => r.stageView).filter(Boolean));
+  const ordenadas = [...STAGE_ORDER, ...FORA_DO_FUNIL].filter(s => presentes.has(s));
+  for(const s of presentes) if(!ordenadas.includes(s)) ordenadas.push(s);
+  return ordenadas;
 }
 
 const SOURCE_ORDER = ['Anúncio','Formulário','Orgânico'];
@@ -783,11 +1039,13 @@ function parseDateTime(s){
 /* =========================================================
    REUNIÕES — agendada / realizada a partir da data marcada
 ========================================================= */
-const APRES_STAGE_IDX = STAGE_ORDER.indexOf('Apresentação Agendada');
+/* Lido a cada chamada, e não uma vez no carregamento: STAGE_ORDER agora é
+   recalculado conforme o filtro de pipeline. */
 function meetInfo(r){
-  const idx = STAGE_ORDER.indexOf(r.stage);
-  const advanced = idx !== -1 && APRES_STAGE_IDX !== -1 && idx > APRES_STAGE_IDX; // passou da apresentação
-  const atApres  = idx !== -1 && idx === APRES_STAGE_IDX;
+  const apresIdx = STAGE_ORDER.indexOf('Apresentação Agendada');
+  const idx = STAGE_ORDER.indexOf(r.stageView);
+  const advanced = idx !== -1 && apresIdx !== -1 && idx > apresIdx; // passou da apresentação
+  const atApres  = idx !== -1 && idx === apresIdx;
   const booked = !!r.meetDt || advanced || atApres;
   if(!booked) return { booked:false, held:false, status:'', dt:null };
   const now = new Date();
@@ -811,7 +1069,7 @@ function meetCounts(rows){
     if(mi.held) realiz++;
     if(mi.status==='futura'){ futura++; if(!next || mi.dt < next) next = mi.dt; }
     if(mi.status==='sem-data') semData++;
-    if(r.stage === 'Venda') vendas++;
+    if(r.stageView === 'Venda') vendas++;
   }
   return { agend, realiz, futura, semData, vendas, next };
 }
@@ -848,11 +1106,95 @@ function loadCsv(url, optional){
   });
 }
 
+/* =========================================================
+   ACESSO — a senha é conferida no Worker, não aqui.
+   Esta página só guarda a chave e a manda no header; sem a chave
+   certa o Worker devolve 401 e nenhum dado sai do CRM.
+========================================================= */
+const AUTH_KEY_STORAGE = 'tatsuo_dash_key';
+let SNAPSHOT_META = null;
+
+function getKey(){
+  try { return localStorage.getItem(AUTH_KEY_STORAGE) || ''; } catch(_) { return ''; }
+}
+function setKey(v){
+  try { v ? localStorage.setItem(AUTH_KEY_STORAGE, v) : localStorage.removeItem(AUTH_KEY_STORAGE); } catch(_){}
+}
+
+/* Mostra a tela de senha e resolve quando o usuário envia uma.
+   O timer de ocultação precisa ser cancelado a cada chamada: numa senha
+   errada o 401 volta em milissegundos e a tela reabre antes do timer
+   anterior disparar — sem o clearTimeout ele apagaria a tela recém-aberta
+   e o usuário ficaria olhando um dashboard vazio. */
+let authHideTimer = null;
+function askKey(msg){
+  return new Promise(resolve => {
+    const veil  = document.getElementById('auth-veil');
+    const form  = document.getElementById('auth-form');
+    const input = document.getElementById('auth-input');
+
+    if(authHideTimer){ clearTimeout(authHideTimer); authHideTimer = null; }
+
+    document.getElementById('auth-msg').textContent = msg || '';
+    document.getElementById('veil').classList.add('hide');
+    veil.style.display = 'flex';
+    requestAnimationFrame(() => veil.classList.remove('hide'));
+    input.value = '';
+    input.focus();
+
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      const v = input.value.trim();
+      if(!v){
+        document.getElementById('auth-msg').textContent = 'Digite a senha.';
+        return;
+      }
+      form.onsubmit = null;
+      veil.classList.add('hide');
+      authHideTimer = setTimeout(() => {
+        veil.style.display = 'none';
+        authHideTimer = null;
+      }, 400);
+      document.getElementById('veil').classList.remove('hide');
+      resolve(v);
+    };
+  });
+}
+
+/* Busca as linhas no Worker, pedindo a senha quantas vezes for preciso. */
+async function loadLeads(){
+  let key = getKey();
+  for(let tentativa = 0; tentativa < 4; tentativa++){
+    if(!key) key = await askKey(tentativa ? 'Senha incorreta.' : '');
+
+    const res = await fetch(API_URL, { headers: { 'X-Dash-Key': key } });
+
+    if(res.status === 401){
+      setKey('');
+      key = '';
+      continue;
+    }
+    if(!res.ok){
+      throw new Error('O servidor de dados respondeu ' + res.status + '.');
+    }
+
+    const json = await res.json();
+    setKey(key);
+    SNAPSHOT_META = { generatedAt: json.generatedAt, stale: !!json.stale, counts: json.counts };
+    // estrutura dos pipelines: é dela que sai a ordem e a composição do funil
+    PIPELINES = Array.isArray(json.pipelines) ? json.pipelines : [];
+    if(!Array.isArray(json.rows)) throw new Error('Resposta do servidor sem a lista de linhas.');
+    return json.rows;
+  }
+  throw new Error('Senha incorreta. Recarregue a página para tentar de novo.');
+}
+
 function loadData(){
-  Promise.all([ loadCsv(CSV_URL, false), loadCsv(SPEND_CSV_URL, true) ])
+  const leadsPromise = USE_CSV ? loadCsv(CSV_URL, false) : loadLeads();
+  Promise.all([ leadsPromise, loadCsv(SPEND_CSV_URL, true) ])
   .then(([leadsData, spendData]) => {
     try{
-      if(!leadsData || !leadsData.length) throw new Error('A planilha não retornou linhas.');
+      if(!leadsData || !leadsData.length) throw new Error(USE_CSV ? 'A planilha não retornou linhas.' : 'O CRM não retornou nenhuma oportunidade.');
       // ---- SPEND ----
       SPEND_RAW = (spendData||[]).map(r => {
         const camp = (r.campanha || r.Campanha || r.CAMPANHA || r['CAMPANHA'] || '').trim();
@@ -961,7 +1303,7 @@ function loadData(){
       bootstrap();
     }catch(e){ showError(e.message); }
   })
-  .catch(err => showError((err && err.message) || 'Falha ao baixar o CSV.'));
+  .catch(err => showError((err && err.message) || 'Falha ao carregar os dados.'));
 }
 
 function showError(msg){
@@ -978,14 +1320,11 @@ function showError(msg){
 const MS = {}; // multi-select instances, keyed by short name
 
 function bootstrap(){
+  // as etapas precisam existir antes de montar o filtro de estágio, que as
+  // ordena por STAGE_ORDER
+  atualizarEtapas();
   const camps = [...new Set(RAW.map(r=>r.campaign).filter(Boolean))].sort();
-  const stages = [...new Set(RAW.map(r=>r.stage).filter(Boolean))].sort((a,b)=>{
-    const ia = STAGE_ORDER.indexOf(a), ib = STAGE_ORDER.indexOf(b);
-    if(ia!==-1 && ib!==-1) return ia-ib;
-    if(ia!==-1) return -1;
-    if(ib!==-1) return 1;
-    return a.localeCompare(b);
-  });
+  const stages = opcoesDeEtapa();
   const sources = [...new Set(RAW.map(r=>r.source).filter(Boolean))].sort();
   const pipelines = [...new Set(RAW.map(r=>r.pipeline).filter(Boolean))].sort();
 
@@ -1039,10 +1378,15 @@ function bootstrap(){
     render();
   });
 
-  // meta
-  const now = new Date();
+  // meta — hora em que o CRM foi lido, não a hora em que a página abriu
+  const syncAt = (SNAPSHOT_META && SNAPSHOT_META.generatedAt)
+    ? new Date(SNAPSHOT_META.generatedAt)
+    : new Date();
+  const mins = Math.round((Date.now() - syncAt.getTime()) / 60000);
+  const idade = mins < 1 ? 'agora' : (mins < 60 ? 'há ' + mins + ' min' : 'há ' + Math.round(mins/60) + 'h');
   document.getElementById('meta-time').textContent =
-    'Atualizado ' + now.toLocaleDateString('pt-BR') + ' • ' + now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    'Atualizado ' + syncAt.toLocaleDateString('pt-BR') + ' • ' +
+    syncAt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) + ' (' + idade + ')';
 
   wireTablePager();
   wireCreativesSort();
@@ -1096,7 +1440,7 @@ function getFiltered(period){
     if(f.end   && !r.dt) return false;
     if(f.camp.size     && !f.camp.has(r.campaign)) return false;
     if(f.tag.size      && !f.tag.has(r.tag))       return false;
-    if(f.stage.size    && !f.stage.has(r.stage))   return false;
+    if(f.stage.size    && !f.stage.has(r.stageView)) return false;
     if(f.source.size   && !f.source.has(r.source)) return false;
     if(f.creative.size && !f.creative.has((r.conteudo||'').trim())) return false;
     if(f.pipeline.size && !f.pipeline.has(r.pipeline)) return false;
@@ -1235,6 +1579,9 @@ function spendByTag(){
 ========================================================= */
 function render(){
   TABLE_PAGE = 1; // qualquer mudança de filtro reseta para página 1
+  // o funil depende de quais pipelines estão filtrados, então é recalculado
+  // antes de desenhar qualquer coisa
+  atualizarEtapas();
   const data = getFiltered();
   const dataB = CMP_ON ? getFiltered('B') : null;
   renderSummary(data, dataB);
@@ -1271,9 +1618,9 @@ function creativeStats(data, period){
     if(r.tag==='MQL') m.mql++;
     else if(r.tag==='Q-MQL') m.qmql++;
     else if(r.tag==='N-MQL') m.nmql++;
-    const idx = STAGE_ORDER.indexOf(r.stage);
+    const idx = STAGE_ORDER.indexOf(r.stageView);
     if(idx !== -1 && APRES_IDX !== -1 && idx >= APRES_IDX) m.apres++;
-    if(r.stage === 'Venda') m.vendas++;
+    if(r.stageView === 'Venda') m.vendas++;
     if(r.campaign) m.byCamp[r.campaign] = (m.byCamp[r.campaign]||0) + 1;
   }
   // ---- GASTO ----
@@ -1533,9 +1880,9 @@ function renderMeetKPIs(data, dataB){
   if(!el) return;
   const A = meetCounts(data);
   const spend = totalSpend(getFilteredSpend());
-  const sales = data.filter(r=>r.stage==='Venda').length;
+  const sales = data.filter(r=>r.stageView==='Venda').length;
   let B = null, spendB = 0, salesB = 0;
-  if(dataB){ B = meetCounts(dataB); spendB = totalSpend(getFilteredSpend('B')); salesB = dataB.filter(r=>r.stage==='Venda').length; }
+  if(dataB){ B = meetCounts(dataB); spendB = totalSpend(getFilteredSpend('B')); salesB = dataB.filter(r=>r.stageView==='Venda').length; }
   const c = (label, val, sub, bVal) => ({label, val, sub, bVal});
   const cards = [
     c('Reuniões agendadas', fmtNum(A.agend), data.length ? pctStr(A.agend, data.length)+' dos leads' : '',
@@ -1710,7 +2057,7 @@ function renderLeadsTable(data){
   }
 
   tbody.innerHTML = slice.map(r => {
-    const stageColor = STAGE_COLOR[r.stage] || '#5A6B7A';
+    const stageColor = STAGE_COLOR[r.stageView] || '#5A6B7A';
     const mi = meetInfo(r);
     const meetColor = mi.status==='realizada' ? '#3AA56B' : (mi.status==='futura' ? '#E8C547' : '#8A9AAB');
     const meetLabel = mi.status==='realizada' ? 'Realizada' : (mi.status==='futura' ? 'Agendada' : 'Sem data');
@@ -1783,6 +2130,17 @@ class MultiSelect{
   }
   getValues(){ return new Set(this.selected); }
   setValues(arr){ this.selected = new Set(arr); this._updateLabel(); this._syncCheckboxes(); }
+  /* Troca a lista de opções. Usado quando o filtro de estágio alterna entre
+     os grupos do funil consolidado e as etapas cruas de um pipeline.
+     NÃO dispara onChange de propósito: é chamado de dentro do render, e
+     disparar aqui entraria em recursão. */
+  setOptions(arr){
+    this.options = [...arr];
+    for(const v of [...this.selected]) if(!this.options.includes(v)) this.selected.delete(v);
+    this._renderShell();
+    this._updateLabel();
+    this._syncCheckboxes();
+  }
   clear(){ if(!this.selected.size) return; this.selected.clear(); this._updateLabel(); this._syncCheckboxes(); }
   toggle(v){
     if(!this.options.includes(v)) return;
@@ -1912,7 +2270,7 @@ function renderOriginSummary(data, dataB){
 function summaryMetrics(data, period){
   const total = data.length;
   const spend = totalSpend(getFilteredSpend(period));
-  const sales = data.filter(r => r.stage === 'Venda').length;
+  const sales = data.filter(r => r.stageView === 'Venda').length;
   const mc = meetCounts(data);
   return { total, spend, sales, agend:mc.agend, realiz:mc.realiz,
     cpl: total ? spend/total : 0, cps: sales ? spend/sales : 0,
@@ -2085,20 +2443,21 @@ function renderTagsChart(data, dataB){
 */
 function stageReachedCount(rows, stage){
   // mantido para compatibilidade com o funil (cumulativo)
-  if(stage === STAGE_STANDBY){
-    return rows.filter(r => r.stage === STAGE_STANDBY).length;
+  // etapa fora do funil não acumula: conta só quem está nela
+  if(FORA_DO_FUNIL.includes(stage)){
+    return rows.filter(r => r.stageView === stage).length;
   }
   const minIdx = STAGE_ORDER.indexOf(stage);
   if(minIdx === -1) return 0;
   return rows.filter(r => {
-    const i = STAGE_ORDER.indexOf(r.stage);
+    const i = STAGE_ORDER.indexOf(r.stageView);
     return i >= minIdx;
   }).length;
 }
 
 // contagem de leads atualmente em uma etapa (sem cumular)
 function stageCurrentCount(rows, stage){
-  return rows.filter(r => r.stage === stage).length;
+  return rows.filter(r => r.stageView === stage).length;
 }
 
 function renderPipelineChart(data, dataB){
@@ -2113,8 +2472,16 @@ function renderPipelineChart(data, dataB){
     const ia=SOURCE_ORDER.indexOf(a), ib=SOURCE_ORDER.indexOf(b);
     return (ia===-1?99:ia)-(ib===-1?99:ib);
   });
-  // sempre mostrar todas as etapas + Standby (mesmo zeradas), respeitando ordem
-  const stages = [...STAGE_ORDER, STAGE_STANDBY];
+  // sempre mostrar todas as etapas + as de fora do funil (mesmo zeradas),
+  // respeitando a ordem
+  const stages = [...STAGE_ORDER, ...FORA_DO_FUNIL];
+
+  /* Piso de altura: 42px por etapa é a mesma altura de uma .funnel-row, então
+     as duas colunas ficam na mesma cadência; +70px para o eixo X e a legenda.
+     Sem isso, um funil com muitas etapas espremeria os rótulos de duas linhas
+     (nome + custo/lead) e o Chart.js começaria a pular nomes. O painel ainda
+     pode esticar além disso para acompanhar o funil ao lado. */
+  wrap.style.minHeight = Math.max(380, stages.length * 42 + 70) + 'px';
 
   // ---- custo por lead em cada estágio ----
   // CPL_estagio = investido total (no recorte) / leads atualmente neste estágio
@@ -2178,7 +2545,6 @@ function renderPipelineChart(data, dataB){
           backgroundColor:'#181818', borderColor:'#2A2A2A', borderWidth:1, padding:12,
           titleColor:'#fff', bodyColor:'#fff', titleFont:{family:'Outfit',weight:'600',size:13}, bodyFont:{family:'Outfit',size:12},
           callbacks:{
-            title: (items)=> items[0].label,
             label: (c)=>{
               if(cmpMode) return ' ' + c.dataset.label + ': ' + fmtNum(c.parsed.x) + ' leads';
               const stageIdx = c.dataIndex;
@@ -2187,9 +2553,12 @@ function renderPipelineChart(data, dataB){
               const pct = total ? (v/total*100) : 0;
               return ' ' + c.dataset.label + ': ' + fmtNum(v) + ' leads  •  ' + pct.toFixed(1).replace('.',',') + '%';
             },
-            title: (items)=> stages[items[0].dataIndex],
+            /* O `filter` acima descarta itens zerados. Numa etapa vazia em
+               todas as origens a lista fica sem nenhum item, e aí items[0]
+               é undefined — daí as guardas. */
+            title: (items)=> (items.length ? stages[items[0].dataIndex] : ''),
             footer: (items)=>{
-              if(cmpMode) return [];
+              if(cmpMode || !items.length) return [];
               const stageIdx = items[0].dataIndex;
               const total = items[0].chart.data.datasets.reduce((s,ds)=> s + (ds.data[stageIdx]||0), 0);
               const lines = ['Total no estágio: ' + fmtNum(total) + ' leads'];
@@ -2204,7 +2573,9 @@ function renderPipelineChart(data, dataB){
       },
       scales:{
         x:{ stacked:!cmpMode, grid:{color:'rgba(255,255,255,.04)'}, ticks:{ color:'#A0A0A0', font:{family:'Outfit'} } },
-        y:{ stacked:!cmpMode, grid:{display:false}, ticks:{ color:'#fff', font:{family:'Outfit', size:12, weight:'500'}, callback: function(val, idx){ return tickLabels[idx]; } } }
+        // autoSkip:false — a altura acima já garante espaço para todos os
+        // nomes, e pular etapa no eixo tornava o gráfico ilegível
+        y:{ stacked:!cmpMode, grid:{display:false}, ticks:{ autoSkip:false, color:'#fff', font:{family:'Outfit', size:12, weight:'500'}, callback: function(val, idx){ return tickLabels[idx]; } } }
       }
     }
   });
@@ -2231,8 +2602,6 @@ function renderFunnel(data, dataB){
     total: stageReachedCount(data, st),
     color: STAGE_COLOR[st] || '#5A6B7A'
   }));
-  const standbyTotal = data.filter(r => r.stage === STAGE_STANDBY).length;
-
   const topB = dataB ? stageReachedCount(dataB, stages[0]) : 0;
   const top = totals[0]?.total || 0;
   if(top === 0 && !topB){
@@ -2261,26 +2630,36 @@ function renderFunnel(data, dataB){
     wrap.appendChild(row);
   }
 
-  // Standby — fora da ordem, mostrado em separado
-  if(standbyTotal > 0){
+  /* Etapas marcadas com showInFunnel = false no CRM (hoje Standby e Base).
+     Ficam abaixo de uma divisória e não entram na conversão cumulativa. */
+    const foraComLeads = FORA_DO_FUNIL
+    .map(st => ({ stage: st, total: data.filter(r => r.stageView === st).length }))
+    .filter(x => x.total > 0);
+
+  if(foraComLeads.length){
     const sep = document.createElement('div');
     sep.style.cssText = 'margin:10px 0 4px;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim)';
     sep.textContent = '— Fora do funil —';
     wrap.appendChild(sep);
-    const pctOfTop = top ? (standbyTotal / top) * 100 : 0;
-    const standbyB = dataB ? dataB.filter(r => r.stage === STAGE_STANDBY).length : 0;
-    const row = document.createElement('div');
-    row.className = 'funnel-row';
-    row.innerHTML = `
-      <div class="name">Standby</div>
-      <div class="track">
-        <span class="seg" style="width:${Math.max(pctOfTop,0)}%;background:${STAGE_COLOR['Standby']}">
-          <span class="seg-label">${pctOfTop.toFixed(1).replace('.',',')}%</span>
-        </span>
-      </div>
-      <div class="val">${fmtNum(standbyTotal)}${dataB ? `<span class="cmp-b">B: ${fmtNum(standbyB)}${deltaHtml(standbyTotal, standbyB, false)}</span>` : ''}</div>
-    `;
-    wrap.appendChild(row);
+
+    for(const f of foraComLeads){
+      const pctOfTop = top ? (f.total / top) * 100 : 0;
+      const bVal = dataB ? dataB.filter(r => r.stageView === f.stage).length : 0;
+      const row = document.createElement('div');
+      row.className = 'funnel-row';
+      row.innerHTML = `
+        <div class="name">${f.stage}</div>
+        <div class="track">
+          <span class="seg" style="width:${Math.max(pctOfTop,0)}%;background:${STAGE_COLOR[f.stage] || '#3A3A3A'}">
+            <span class="seg-label">${pctOfTop.toFixed(1).replace('.',',')}%</span>
+          </span>
+        </div>
+        <div class="val">${fmtNum(f.total)}${dataB ? `<span class="cmp-b">B: ${fmtNum(bVal)}${deltaHtml(f.total, bVal, false)}</span>` : ''}</div>
+      `;
+      row.title = 'Filtrar por estágio: ' + f.stage;
+      row.addEventListener('click', ()=> applyFilter('f-stage', f.stage));
+      wrap.appendChild(row);
+    }
   }
 
   // nota
@@ -2301,7 +2680,7 @@ function renderTableLegacy(data){
   const rows = [];
   for(const src of sources){
     for(const st of STAGE_ORDER){
-      const sub = data.filter(r=>r.source===src && r.stage===st);
+      const sub = data.filter(r=>r.source===src && r.stageView===st);
       if(!sub.length) continue;
       const vol = sub.length;
       const inv = sub.reduce((s,r)=>s+r.valor,0);

@@ -1,0 +1,23 @@
+name = "tatsuo-dash-api"
+main = "src/index.js"
+compatibility_date = "2026-09-01"
+
+# Origens que podem chamar este Worker. Ajustar para a URL real do Pages
+# antes do deploy (ex.: "https://gabriel.github.io").
+[vars]
+ALLOWED_ORIGINS = "https://SEU-USUARIO.github.io"
+
+# Sem cron: quem coleta e o workflow sync-ghl do GitHub Actions, que grava
+# direto no KV. O Worker so le.
+
+# Snapshot dos dados ja normalizados.
+# Criar com:  npx wrangler kv namespace create DASH_CACHE
+# e colar o id devolvido abaixo.
+[[kv_namespaces]]
+binding = "DASH_CACHE"
+id = "PREENCHER_APOS_CRIAR_O_NAMESPACE"
+
+# Secret (NAO vai neste arquivo). Cadastrar com:
+#   npx wrangler secret put DASH_PASSWORD
+#
+# O Worker nao precisa mais do token do GHL: ele nunca fala com o CRM.

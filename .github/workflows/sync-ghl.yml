@@ -1,0 +1,48 @@
+name: sync-ghl
+
+# Coleta os dados do GoHighLevel e grava o snapshot no Cloudflare KV.
+# O Worker so le esse snapshot; quem fala com o CRM e este job.
+#
+# Roda aqui, e nao dentro do Worker, porque a coleta gasta ~120 requisicoes
+# e ~2 minutos — muito acima dos limites do plano gratis do Cloudflare
+# Workers (50 subrequisicoes e 10 ms de CPU por execucao).
+
+on:
+  schedule:
+    # a cada 20 minutos. O agendamento do GitHub nao e pontual: em horario
+    # de pico costuma atrasar de 5 a 15 minutos.
+    - cron: '*/20 * * * *'
+  workflow_dispatch:      # permite rodar na mao pela aba Actions
+
+# Uma execucao por vez: se uma coleta atrasar, a seguinte espera em vez de
+# escrever no KV ao mesmo tempo.
+concurrency:
+  group: sync-ghl
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Coletar do GHL e enviar ao KV
+        env:
+          GHL_TOKEN: ${{ secrets.GHL_TOKEN }}
+          GHL_LOCATION_ID: ${{ secrets.GHL_LOCATION_ID }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          CF_KV_NAMESPACE_ID: ${{ secrets.CF_KV_NAMESPACE_ID }}
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+        run: node collector/coletar.mjs
+
+      # O snapshot tem dados de lead (nome, telefone, e-mail). Nao sobe como
+      # artefato do Actions: ficaria baixavel por quem tem acesso ao repo.
+      - name: Conferir que nada de dado ficou no runner
+        if: always()
+        run: rm -f probe-output/snapshot.json
