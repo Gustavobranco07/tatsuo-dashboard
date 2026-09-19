@@ -67,6 +67,7 @@ const COLUNAS = [
   'first_atribution_campaign', 'last_atribution_campaign',
   'last_atribution_content', 'data_do_agendamento', 'data_da_reuniao',
   'motivo_perda', 'faturamento',
+  'cadencia', 'dt_proxima_reabordagem', 'melhor_periodo_contato',
 ];
 
 console.log('\n' + '='.repeat(64));

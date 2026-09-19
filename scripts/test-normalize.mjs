@@ -6,6 +6,9 @@
  */
 
 import { buildRow, toSpDateTime, toDateOnly, pickCfValue, CAMPOS, MOTIVO_REMOVIDO } from '../collector/normalize.js';
+import { mesclarMotivos, gruposAtivos } from '../collector/collect.js';
+import { MOTIVOS_HISTORICOS } from '../collector/motivos-historicos.js';
+import { GRUPOS_MOTIVOS, agruparMotivo } from '../collector/motivos-grupos.js';
 
 let falhas = 0;
 function check(label, atual, esperado) {
@@ -158,7 +161,8 @@ check('data_da_reuniao ausente fica vazia', row.data_da_reuniao, '');
 
 console.log('\nmotivo de perda resolvido em nome');
 const perdida = buildRow({ ...oportunidade, status: 'lost', lostReasonId: 'lr1' }, ctx);
-check('id vira o nome do motivo', perdida.motivo_perda, 'Não tem Interesse');
+// 'Não tem Interesse' é membro do grupo 'Não tem interesse'
+check('id vira o nome canonico do grupo', perdida.motivo_perda, 'Não tem interesse');
 check('id resolvido tambem guarda o id cru', perdida.motivo_perda_id, 'lr1');
 const perdidaDesconhecida = buildRow({ ...oportunidade, lostReasonId: 'xyz' }, ctx);
 check('motivo historico vira rotulo generico, nao ObjectId', perdidaDesconhecida.motivo_perda, MOTIVO_REMOVIDO);
@@ -199,6 +203,73 @@ check('oportunidade sem contato nao quebra', semContato.id_contato, 'inexistente
 check('estagio desconhecido vira vazio', semContato.estagio_pipeline, '');
 check('valor ausente vira 0', semContato.valor, 0);
 check('closer sem nada vira vazio', semContato.closer, '');
+
+console.log('\nmotivos de perda: API + historico');
+{
+  const daApi = new Map([['vivo', 'Nome Atual'], ['so-api', 'So na API']]);
+  const hist = { 'vivo': 'Nome Antigo', 'so-hist': 'So no historico' };
+  const m = mesclarMotivos(daApi, hist);
+  check('historico preenche o que a API nao conhece', m.get('so-hist'), 'So no historico');
+  check('API vence o historico quando os dois conhecem o id', m.get('vivo'), 'Nome Atual');
+  check('id so da API continua vindo', m.get('so-api'), 'So na API');
+  check('id que ninguem conhece nao aparece', m.has('fantasma'), false);
+
+  const desconhecido = buildRow({ ...oportunidade, lostReasonId: 'fantasma' }, { ...ctx, lostReasons: m });
+  check('id desconhecido pelos dois cai no rotulo generico',
+    desconhecido.motivo_perda, MOTIVO_REMOVIDO);
+}
+
+console.log('\nagrupamento de motivos equivalentes');
+check('grafia diferente cai no mesmo grupo',
+  ['Sem perfi', 'sem perfil', 'Fora de perfil', 'Não tem perfil para evento.'].map(agruparMotivo),
+  ['Fora de perfil', 'Fora de perfil', 'Fora de perfil', 'Fora de perfil']);
+check('semantica equivalente cai no mesmo grupo',
+  ['Achou caro', 'Não tem o valor do investimento'].map(agruparMotivo),
+  ['Preço / investimento', 'Preço / investimento']);
+check('motivo fora de qualquer grupo passa intacto',
+  agruparMotivo('Motivo inventado agora'), 'Motivo inventado agora');
+check('vazio continua vazio', agruparMotivo(''), '');
+check('separados de proposito continuam separados',
+  ['Perdido abaixo bronze', 'Bloqueou nosso contato.', 'Perdido', 'Tem compromisso nessa data.'].map(agruparMotivo),
+  ['Perdido abaixo bronze', 'Bloqueou nosso contato.', 'Perdido', 'Tem compromisso nessa data.']);
+check('nenhum nome aparece em dois grupos ao mesmo tempo', (() => {
+  const vistos = new Set(), repetidos = [];
+  for (const membros of Object.values(GRUPOS_MOTIVOS)) {
+    for (const m of membros) { if (vistos.has(m)) repetidos.push(m); vistos.add(m); }
+  }
+  return repetidos;
+})(), []);
+
+console.log('\ngrupo ativo: basta um membro cadastrado no CRM');
+{
+  // no CRM real, 'Sem perfi' e 'sem perfil' estão cadastrados, mas
+  // 'Não tem perfil para evento.' (o membro de maior volume) não está
+  const daApi = new Map([['id1', 'Sem perfi'], ['id2', 'Duplicado']]);
+  const ativos = gruposAtivos(daApi);
+  check('grupo inteiro conta como ativo por causa de um membro',
+    ativos.has('Fora de perfil'), true);
+  check('grupo sem nenhum membro cadastrado nao e ativo',
+    ativos.has('Preço / investimento'), false);
+
+  const lr = new Map([['zzz', 'Não tem perfil para evento.']]);
+  const r = buildRow({ ...oportunidade, lostReasonId: 'zzz' }, { ...ctx, lostReasons: lr, gruposAtivos: ativos });
+  check('linha de membro nao cadastrado herda o ativo do grupo',
+    [r.motivo_perda, r.motivo_ativo], ['Fora de perfil', true]);
+}
+
+console.log('\nmapa historico congelado no repositorio');
+check('tem entradas', Object.keys(MOTIVOS_HISTORICOS).length > 0, true);
+check('nenhum nome vazio',
+  Object.entries(MOTIVOS_HISTORICOS).filter(([, v]) => !String(v).trim()).map(([k]) => k), []);
+check('todas as chaves parecem ObjectId',
+  Object.keys(MOTIVOS_HISTORICOS).filter((k) => !/^[0-9a-f]{24}$/.test(k)), []);
+
+console.log('\ncampos novos, ainda sem uso na tela');
+check('cadencia', CAMPOS.cadencia, ['opportunity.progresso_da_cadencia']);
+check('dt_proxima_reabordagem', CAMPOS.dt_proxima_reabordagem, ['opportunity.data_incio_cadncia']);
+check('melhor_periodo_contato', CAMPOS.melhor_periodo_contato, ['contact.melhor_periodo_para_contato']);
+check('saem vazios quando o CRM nao tem o dado',
+  [row.cadencia, row.dt_proxima_reabordagem, row.melhor_periodo_contato], ['', '', '']);
 
 console.log('\nconsistencia do mapa');
 check('toda coluna de CAMPOS tem ao menos um candidato',

@@ -9,6 +9,8 @@
  * MAPEAMENTO.md. Quando um campo novo for confirmado, e la que se mexe.
  */
 
+import { agruparMotivo } from './motivos-grupos.js';
+
 const TZ = 'America/Sao_Paulo';
 const UM_DIA_MS = 86400000;
 
@@ -101,18 +103,51 @@ export const CAMPOS = {
   data_do_agendamento: ['opportunity.data_do_agendamento'],
   data_da_reuniao: ['opportunity.data_da_reuniao'],
 
+  /* ATENÇÃO ao usar: os três campos têm listas de opção incompatíveis entre
+     si — uns respondem por mês ("Até R$ 100 mil/mês"), outros por ano
+     ("Menos de R$ 1 milhão/ano"). Antes de agrupar num gráfico é preciso
+     normalizar para uma escala só. */
   faturamento: [
     'contact.faturamento_anual',
     'contact.qual_seu_faturamento_anual',
     'contact.qual_o_faturamento_da_tua_empresa',
   ],
+
+  /* --- ainda não usados na tela; coletados para as abas de SDR e de perfil
+     do lead, para que o dado exista assim que o time começar a preencher --- */
+
+  cadencia: ['opportunity.progresso_da_cadencia'],
+
+  /* A chave `data_incio_cadncia` é resto de uma renomeação: o campo se chama
+     "Data da Próxima Reabordagem" e é isso que guarda. NÃO é início de
+     cadência — esse marco é a entrada no pipeline, ou seja
+     dt_criacao_oportunidade. */
+  dt_proxima_reabordagem: ['opportunity.data_incio_cadncia'],
+
+  melhor_periodo_contato: ['contact.melhor_periodo_para_contato'],
 };
 
 /** Colunas cujo valor e data pura (sem hora) e nao pode mudar de fuso. */
-const COLUNAS_DATA = new Set(['data_do_agendamento', 'data_da_reuniao']);
+const COLUNAS_DATA = new Set(['data_do_agendamento', 'data_da_reuniao', 'dt_proxima_reabordagem']);
 
 /** Rotulo para motivo de perda que existe na oportunidade mas nao no CRM. */
 export const MOTIVO_REMOVIDO = 'Motivo removido do CRM';
+
+/**
+ * lostReasonId -> { nome do grupo, o grupo ainda existe no CRM }
+ *
+ * O CRM tem 11 motivos cadastrados, mas as oportunidades antigas apontam
+ * para ids de motivos ja apagados, que a API nao traduz. Esses caem em
+ * MOTIVO_REMOVIDO, que e diferente de "perdeu sem motivo registrado":
+ * juntar os dois numa celula vazia esconderia a diferenca.
+ */
+export function resolverMotivo(lostReasonId, lostReasons, gruposAtivos) {
+  if (!lostReasonId) return { nome: '', ativo: false };
+  const bruto = lostReasons?.get(lostReasonId);
+  if (!bruto) return { nome: MOTIVO_REMOVIDO, ativo: false };
+  const nome = agruparMotivo(bruto);
+  return { nome, ativo: !!gruposAtivos?.has(nome) };
+}
 
 /**
  * Le os customFields de um contato/oportunidade e devolve um objeto indexado
@@ -227,7 +262,7 @@ function atribuicaoNativa(contact) {
  * e para a futura aba de performance do time de vendas.
  */
 export function buildRow(opp, ctx) {
-  const { contactsById, stagesById, usersById, cfById, lostReasons } = ctx;
+  const { contactsById, stagesById, usersById, cfById, lostReasons, gruposAtivos } = ctx;
 
   const contact = contactsById.get(opp.contactId || opp.contact?.id) || opp.contact || {};
   const stage = stagesById.get(opp.pipelineStageId) || {};
@@ -239,6 +274,7 @@ export function buildRow(opp, ctx) {
   const att = (qual, parte) => campo(cf, qual + '_atribution_' + parte) || nativa[qual][parte];
 
   const tags = [...new Set([...(contact.tags || []), ...(opp.contact?.tags || [])])];
+  const motivo = resolverMotivo(opp.lostReasonId, lostReasons, gruposAtivos);
 
   return {
     /* --- colunas iguais as do CSV de hoje --- */
@@ -286,10 +322,18 @@ export function buildRow(opp, ctx) {
        sem motivo registrado" e "perdeu por um motivo que foi apagado" sao
        coisas diferentes, e juntar as duas na mesma celula vazia esconderia
        isso. O id cru continua em motivo_perda_id. */
-    motivo_perda: !opp.lostReasonId ? ''
-      : (lostReasons?.get(opp.lostReasonId) || MOTIVO_REMOVIDO),
+    motivo_perda: motivo.nome,
     motivo_perda_id: opp.lostReasonId || '',
+    /* Grupo ainda em uso no CRM? Basta um dos membros estar cadastrado —
+       é o que a aba "Existentes no CRM" do painel usa para separar. */
+    motivo_ativo: motivo.ativo,
     faturamento: campo(cf, 'faturamento'),
+
+    /* --- ainda sem uso na tela; existem para as abas de SDR e perfil --- */
+    cadencia: campo(cf, 'cadencia'),
+    dt_proxima_reabordagem: campo(cf, 'dt_proxima_reabordagem'),
+    melhor_periodo_contato: campo(cf, 'melhor_periodo_contato'),
+
     dt_ultima_mudanca_estagio: toSpDateTime(opp.lastStageChangeAt),
     dt_ultima_mudanca_status: toSpDateTime(opp.lastStatusChangeAt),
     dt_atualizacao: toSpDateTime(opp.updatedAt),

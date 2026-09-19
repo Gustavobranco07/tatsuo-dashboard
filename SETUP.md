@@ -42,7 +42,10 @@ gasto de anúncio — a API do GHL não expõe investimento de mídia.
 | `MAPEAMENTO.md` | coluna do dashboard × campo do GHL |
 | `scripts/probe-ghl.mjs` | sonda o schema da conta no CRM |
 | `scripts/gerar-mapeamento.mjs` | regera o `MAPEAMENTO.md` a partir da sondagem |
-| `scripts/test-normalize.mjs` | 48 testes da normalização, sem rede |
+| `scripts/gerar-motivos-historicos.mjs` | reconstrói os motivos de perda que a API não traduz |
+| `collector/motivos-historicos.js` | resultado dessa reconstrução (gerado, não editar) |
+| `collector/motivos-grupos.js` | junta motivos equivalentes (escrito à mão) |
+| `scripts/test-normalize.mjs` | 69 testes da normalização, sem rede |
 | `scripts/mock-server.mjs` | Worker falso, para testar sem o token |
 
 ---
@@ -123,7 +126,7 @@ Depois, na aba **Actions**, rode o workflow `sync-ghl` na mão uma vez
 ## Testar sem tocar no CRM
 
 ```bash
-node scripts/test-normalize.mjs      # 48 testes, sem rede
+node scripts/test-normalize.mjs      # 69 testes, sem rede
 node scripts/mock-server.mjs         # http://localhost:8787, senha: teste
 ```
 
@@ -187,6 +190,123 @@ da coleta. É uma lista de **exclusão**: pipeline novo entra sozinho.
 
 ---
 
+## Origem do lead
+
+`Anúncio` é mídia paga que caiu numa landing page, `Formulário` é Facebook
+Lead Ads (reconhecido pelo `[FORMS]` no nome da campanha) e `Orgânico` é
+tudo que não teve mídia paga por trás. A função é `classifySource`, no
+`index.html`, e a **última regra é uma captura por exclusão** — é por isso
+que as exceções acima dela importam tanto.
+
+Duas exceções existem porque sem elas o balde de Anúncio incha:
+
+- `medium = manual` (contato criado à mão no CRM) vai para Orgânico.
+- `survey`, `External Form` e `form` **sem campanha e sem conteúdo** vão
+  para Orgânico: sem campanha nem criativo não há mídia paga por trás. Com
+  campanha seguem as regras normais, então um `survey` com `[FORMS]`
+  continua sendo Formulário. A lista está em `MEDIUMS_SEM_MIDIA`.
+
+### O corte de 02/05/2026
+
+Antes dessa data a automação gravava só o `first_atribution` na criação, e o
+`last` vinha vazio. Depois dela os dois são gravados, e lead que retorna tem
+só o `last` atualizado — então o `last` passa a ser o caminho mais recente.
+
+O detalhe que complica: **a atribuição mora no contato, não na
+oportunidade**. Um contato com duas oportunidades faz as duas lerem o mesmo
+`last`, e a mais antiga levaria a atribuição da entrada mais recente. Não há
+como casar cada oportunidade com a entrada certa — a lista `attributions`
+nativa do GHL vem vazia e os custom fields não têm carimbo de data.
+
+A solução é casar por ordem: dentro de cada contato, a oportunidade **mais
+recente** usa o `last`, as anteriores usam o `first`. Antes do corte, segue
+aceitando qualquer um dos dois, como sempre foi — o objetivo é não
+reclassificar histórico.
+
+Isso exige duas passadas no carregamento (`definirOrigens`), porque saber se
+uma oportunidade é a mais recente do contato depende de conhecer todas as
+dele. Não dá para calcular linha a linha dentro do `map`.
+
+### Campanha e criativo seguem o mesmo lado
+
+No regime novo, `campaign` e `conteudo` saem da **mesma** atribuição que
+decidiu a origem. Sem isso a linha se contradiz: aparece como Orgânico
+(lido do `last`) e ao mesmo tempo dentro de um criativo pago (lido do
+`first`), contando nos dois lugares. Se o lado escolhido não tem campanha ou
+criativo, o campo fica vazio.
+
+No regime antigo os dois campos ficam como sempre foram, inclusive com as
+prioridades invertidas entre si que já existiam — campanha `first||last` e
+criativo `last||first`. É histórico, e não se reclassifica.
+
+A nota abaixo dos cards de origem conta quantos dos leads contados como
+Orgânico entraram por mídia paga e voltaram por um canal orgânico. É a
+informação que o último toque descarta, e sem ela o número de Orgânico
+parece grande demais sem explicação.
+
+---
+
+## Motivos de perda
+
+A tabela "Motivos de perda" fica abaixo do funil e conta **apenas
+`status = 'lost'`**. Clicar num motivo filtra a página inteira; o filtro
+"Motivo da perda", no topo, faz a mesma coisa.
+
+Tem duas abas:
+
+- **Existentes no CRM** — só os motivos que o time ainda pode escolher hoje.
+  Um grupo entra aqui se **pelo menos um** dos motivos que ele junta estiver
+  cadastrado; sem essa regra a aba mostraria 353 das 3.601 perdas em vez de
+  3.232.
+- **Todos** — inclui os motivos já apagados do CRM e a linha "Sem motivo
+  registrado", em cinza, para a soma fechar com o total de perdas.
+
+Acima de 10 linhas a lista pagina de 10 em 10. A página volta para a
+primeira quando muda a aba ou qualquer filtro.
+
+Esse filtro exige que a oportunidade esteja perdida. Há um punhado de
+oportunidades que foram perdidas, reabertas, e ficaram carregando o
+`lostReasonId` antigo — sem essa condição elas apareceriam num filtro de
+perda sem estarem perdidas, e a contagem da página não bateria com a da
+tabela.
+
+### Por que existe um mapa de motivos no repositório
+
+`/opportunities/lost-reason` devolve só os motivos **cadastrados hoje** (11).
+Oportunidades antigas apontam para motivos que foram apagados ou renomeados
+no CRM, e a API não expõe o nome deles em lugar nenhum. Sem tratamento, 92%
+das perdas apareceriam como um balde genérico.
+
+`collector/motivos-historicos.js` resolve isso. Foi reconstruído cruzando o
+snapshot do CRM com a coluna `motivo_perda` **em texto** da planilha antiga,
+por `id_oportunidade`, e recupera 3.170 das 3.173 perdas órfãs. Na coleta, o
+mapa da API é aplicado **por cima** do histórico: motivo renomeado no CRM
+continua aparecendo com o nome novo.
+
+### Agrupamento
+
+A conta acumulou 38 motivos distintos, muitos a mesma coisa escrita de outro
+jeito ("Achou caro" / "Não tem o valor do investimento") ou com erro de
+digitação ("Sem perfi"). `collector/motivos-grupos.js` junta os equivalentes
+e reduz para 19 grupos. Esse arquivo é **escrito à mão** — é taxonomia, não
+reconstrução de dado. Motivo que não estiver em nenhum grupo passa intacto,
+então motivo novo no CRM aparece sozinho em vez de sumir.
+
+### Reconstrução dos nomes
+
+O arquivo `motivos-historicos.js` é gerado, não se edita à mão:
+
+```bash
+node scripts/gerar-motivos-historicos.mjs
+```
+
+Precisa de um `probe-output/snapshot.json` (rode `coletar.mjs --dry-run`
+antes). Só faz sentido rodar de novo se aparecer "Motivo removido do CRM" em
+volume — e note que a planilha vai parar de crescer, então motivos apagados
+daqui para frente não terão como ser recuperados.
+
+---
+
 ## Durante a migração
 
 Abrir o dashboard com `?src=csv` volta a ler a planilha antiga de leads, para
@@ -213,9 +333,9 @@ antiga salva no navegador recebe 401 e a tela pede a nova sozinha.
   ("Nº de funcionários", "N° de Funcionários", "Número de Funcionários").
 - **Campos de oportunidade sumindo:** a API só devolve os de contato se a
   consulta não pedir `?model=all`. É um bug fácil de reintroduzir.
-- **Motivo de perda vazio:** o CRM tem 11 motivos cadastrados, mas as
-  oportunidades antigas apontam para ~29 ids de motivos já apagados, que a
-  API não resolve. O id cru fica em `motivo_perda_id`.
+- **Motivo de perda vazio:** ver a seção abaixo. Se aparecer "Motivo
+  removido do CRM" em volume, é um id novo que caiu fora do mapa — rode
+  `gerar-motivos-historicos.mjs` de novo.
 - **Coleta incompleta:** o log do workflow mostra `truncated` e a diferença
   entre contatos pedidos e recebidos.
 - **Dashboard sem dados depois do deploy:** `curl` no `/health` do Worker
