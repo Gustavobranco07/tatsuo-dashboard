@@ -22,7 +22,7 @@ prefixo ou comparar por nome faria um sobrescrever o outro.
 | `nro_funcionarios` | Número de Funcionários (`contact.numero_de_funcionarios`, TEXT)<br>reserva: `contact.nro_de_funcionarios`, `contact.n_de_funcionarios`, `contact.qual_o_n_de_funcionarios`, `contact.quantos_colaboradores_atuam_na_sua_empresa_atualmente` | ok |
 | `perfil_do_lead` | Perfil do Lead (`opportunity.perfil_do_lead`, SINGLE_OPTIONS)<br>reserva: `contact.perfil_do_lead` | ok |
 | `produto` | Produtos (`opportunity.produtos`, MULTIPLE_OPTIONS)<br>reserva: `contact.produto_adquirido` | ok |
-| `closer` | Closer (`opportunity.closer`, SINGLE_OPTIONS) | ok |
+| `closer` | Closer (`opportunity.closer`, SINGLE_OPTIONS) — sem fallback para o dono: dono é SDR | ok |
 | `first_atribution_medium` | First_atribution Medium (`contact.first_atribution_medium`, TEXT) | ok |
 | `last_atribution_medium` | Last_atribution Medium (`contact.last_atribution_medium`, TEXT) | ok |
 | `first_atribution_campaign` | First_atribution Campaign (`contact.first_atribution_campaign`, TEXT) | ok |
@@ -55,7 +55,8 @@ prefixo ou comparar por nome faria um sobrescrever o outro.
 | `fonte_oportunidade` | opportunity.source |
 | `tags` | contact.tags |
 | `motivo_perda` | opportunity.lostReasonId, traduzido por /opportunities/lost-reason |
-| `closer_id` | opportunity.assignedTo |
+| `sdr` | nome do dono da oportunidade (opportunity.assignedTo) — é o SDR |
+| `sdr_id` | opportunity.assignedTo |
 | `dt_ultima_mudanca_estagio` | opportunity.lastStageChangeAt |
 | `dt_ultima_mudanca_status` | opportunity.lastStatusChangeAt |
 

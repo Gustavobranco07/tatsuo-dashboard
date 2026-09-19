@@ -185,6 +185,11 @@
   /* painéis da dupla têm alturas bem diferentes (8 faixas de porte contra 4
      de faturamento); sem isto o menor estica e sobra uma caixa vazia */
   #aba-perfil .two-col{align-items:start}
+  .aviso-dado{background:rgba(232,197,71,.07);border:1px solid rgba(232,197,71,.28);border-radius:10px;padding:14px 16px;font-size:12.5px;line-height:1.6;color:var(--muted);margin-bottom:18px}
+  .aviso-dado b{color:#E8C547}
+  .dim-pct{color:var(--dim);font-weight:600;font-size:11px;margin-left:4px}
+  .chip-motivo{display:inline-flex;align-items:center;gap:5px;background:var(--bg-2);border:1px solid var(--border);border-radius:6px;padding:3px 9px;font-size:11.5px;margin:2px 5px 2px 0;white-space:nowrap}
+  #aba-sdr .tab-conv th,#aba-closer .tab-conv th{white-space:nowrap}
   #aba-perfil .funnel-row{grid-template-columns:200px 1fr 80px}
   #aba-perfil .funnel-row .name{text-transform:none;letter-spacing:.02em;font-size:12px;color:var(--text)}
   #aba-perfil .kpi-grid .panel-head h3{font-family:'Bebas Neue',sans-serif;font-size:34px}
@@ -410,7 +415,10 @@
     #aba-perfil .panel{min-width:0}
     #aba-perfil .funnel-row{grid-template-columns:108px 1fr 54px;gap:10px}
     #aba-perfil .funnel-row .name{font-size:11px;overflow-wrap:anywhere}
-    .abas{overflow-x:auto}
+    /* com 4 abas a barra passa de 375px; `width:fit-content` faz a caixa
+       crescer junto, então precisa de teto e de rolagem própria */
+    .abas{max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+    .abas button{padding:11px 11px;font-size:11px;letter-spacing:.05em;white-space:nowrap}
   }
   /* ---------- COMPARAR PERÍODOS ---------- */
   .cmp-btn{display:inline-flex;align-items:center;gap:6px;padding:0 12px;border:1px solid var(--border);border-radius:8px;background:var(--card);color:var(--muted);font-size:12px;white-space:nowrap}
@@ -482,6 +490,8 @@
       <div class="abas" id="abas">
         <button type="button" data-aba="campanhas" class="active">Campanhas</button>
         <button type="button" data-aba="perfil">Perfil do lead</button>
+        <button type="button" data-aba="sdr">SDR</button>
+        <button type="button" data-aba="closer">Closer</button>
       </div>
 
       <!-- FILTERS -->
@@ -733,6 +743,8 @@
       </div><!-- /aba-campanhas -->
 
       <div id="aba-perfil" hidden></div>
+      <div id="aba-sdr" hidden></div>
+      <div id="aba-closer" hidden></div>
     </main>
   </div>
 
@@ -1589,6 +1601,10 @@ function loadData(){
             meetSched,
             meetDone,
             meetDt: meetDone || meetSched,
+            /* Papéis diferentes: o SDR é o dono da oportunidade (todo o
+               histórico tem), o closer vem de um custom field preenchido à
+               mão, novo desde 31/08/2026. */
+            sdr: pick('sdr'),
             closer: pick('closer'),
             // perfil do lead: faixas comparáveis; o valor cru segue na linha
             porte: faixaPorte(pick('nro_funcionarios')),
@@ -1613,6 +1629,11 @@ function loadData(){
                período compara contra limites de dia. Para o gráfico de
                horário de entrada é preciso o carimbo completo. */
             dtHora: parseDateTime(r.dt_criacao_oportunidade),
+            /* Movimentação, para as abas de time: `dtMudancaEtapa` mede há
+               quanto tempo o card está parado; `dtMudancaStatus` fecha o
+               ciclo de quem ganhou ou perdeu. */
+            dtMudancaEtapa: parseDateTime(r.dt_ultima_mudanca_estagio),
+            dtMudancaStatus: parseDateTime(r.dt_ultima_mudanca_status),
             status: (r.status||'').trim(),
           };
         });
@@ -1939,6 +1960,8 @@ function render(){
   /* Só a aba visível desenha: gráfico criado em container escondido nasce
      com tamanho zero e não se recupera sozinho. */
   if(ABA_ATIVA === 'perfil'){ renderPerfil(data); return; }
+  if(ABA_ATIVA === 'sdr'){ renderSDR(data); return; }
+  if(ABA_ATIVA === 'closer'){ renderCloser(data); return; }
 
   renderSummary(data, dataB);
   renderKPIs(data, dataB);
@@ -2207,9 +2230,325 @@ function renderGraficoHora(data){
   });
 }
 
+/* =========================================================
+   ABAS DE TIME — SDR e CLOSER
+
+   São papéis diferentes e vinham colapsados numa coluna só:
+
+   - SDR é o dono da oportunidade (`assignedTo`). Existe em 86% da base e a
+     maioria dos pipelines leva o nome dele.
+   - CLOSER vem de um custom field preenchido à mão, criado em 31/08/2026.
+     Hoje são 51 oportunidades e 3 pessoas — a aba existe para o dado que
+     vai chegar, não para o que já chegou, e diz isso na tela.
+========================================================= */
+
+/**
+ * Chegou a um marco do funil, ou passou dele. Mesma lógica de
+ * chegouApresentacao, mas o marco pode ter nomes diferentes conforme o
+ * pipeline: sem filtro, STAGE_ORDER traz os grupos consolidados; com um
+ * pipeline escolhido, traz as etapas exatas do CRM, e "Em Contato" pode
+ * aparecer como "Em Qualificação" — ou não existir, como no funil oficial,
+ * que vai de "Dia 7" direto para "Apresentação Agendada".
+ *
+ * Devolve null quando nenhum nome do marco existe no funil atual; quem
+ * chama esconde a coluna em vez de mostrar zero.
+ */
+function indiceDoMarco(marco){
+  const grupo = GRUPOS_CONSOLIDADOS.find(g => g.grupo === marco);
+  for(const nome of [marco, ...(grupo ? grupo.etapas : [])]){
+    const i = STAGE_ORDER.indexOf(nome);
+    if(i !== -1) return i;
+  }
+  return -1;
+}
+
+function chegouAte(r, marco){
+  const alvo = indiceDoMarco(marco);
+  if(alvo === -1) return null;
+  const i = STAGE_ORDER.indexOf(r.stageView);
+  return i !== -1 && i >= alvo;
+}
+
+const DIAS_PARADO = 14;
+
+function mediana(nums){
+  if(!nums.length) return null;
+  const a = [...nums].sort((x, y) => x - y);
+  return a[Math.floor(a.length / 2)];
+}
+
+const emDias = (a, b) => (a && b) ? (b - a) / 86400000 : null;
+
+/**
+ * Métricas por pessoa, para SDR ou closer.
+ *
+ * `agora` vem de fora para a conta de "parado" não depender do relógio no
+ * meio do loop.
+ */
+function statsPorPessoa(data, campo, agora){
+  const hoje = agora || new Date();
+  const m = new Map();
+  for(const r of data){
+    const p = String(r[campo] || '').trim();
+    if(!p) continue;
+    if(!m.has(p)) m.set(p, {
+      pessoa: p, leads: 0, contato: 0, apres: 0, ganhos: 0, perdas: 0,
+      abertos: 0, parados: 0, ciclos: [], paradas: [], porGrupo: new Map(), motivos: new Map(),
+    });
+    const e = m.get(p);
+    e.leads++;
+
+    const contato = chegouAte(r, 'Em Contato');
+    if(contato === null) e.contato = null;        // funil filtrado sem essa etapa
+    else if(e.contato !== null && (contato || ganhou(r))) e.contato++;
+
+    if(chegouApresentacao(r)) e.apres++;
+
+    if(ganhou(r)){
+      e.ganhos++;
+      const d = emDias(r.dt, r.dtMudancaStatus);
+      if(d !== null && d >= 0) e.ciclos.push(d);
+    }
+    if(r.status === 'lost'){
+      e.perdas++;
+      const mt = r.motivo || '(sem motivo registrado)';
+      e.motivos.set(mt, (e.motivos.get(mt) || 0) + 1);
+    }
+    if(r.status === 'open'){
+      e.abertos++;
+      const g = r.stageView || '(sem etapa)';
+      e.porGrupo.set(g, (e.porGrupo.get(g) || 0) + 1);
+      const d = emDias(r.dtMudancaEtapa, hoje);
+      if(d !== null && d >= 0){
+        e.paradas.push(d);
+        if(d > DIAS_PARADO) e.parados++;
+      }
+    }
+  }
+  return [...m.values()].sort((a, b) => b.leads - a.leads);
+}
+
+const pctCel = (n, d) => d ? (n / d * 100).toFixed(1).replace('.', ',') + '%' : '—';
+const plural = (n, um, muitos) => fmtNum(n) + ' ' + (n === 1 ? um : muitos);
+
+/** Tabela de conversão por pessoa. */
+function tabelaTime(itens, rotuloPessoa){
+  if(!itens.length) return '<div class="empty-state">Nenhuma pessoa com leads neste recorte.</div>';
+  const temContato = itens.some(x => x.contato !== null);
+  const linhas = itens.map(x => `
+    <tr>
+      <td>${esc(x.pessoa)}</td>
+      <td class="num">${fmtNum(x.leads)}</td>
+      ${temContato ? `<td class="num">${x.contato === null ? '<span class="dim">—</span>'
+        : fmtNum(x.contato) + ' <b class="dim-pct">' + pctCel(x.contato, x.leads) + '</b>'}</td>` : ''}
+      <td class="num">${fmtNum(x.apres)} <b class="dim-pct">${pctCel(x.apres, x.leads)}</b></td>
+      <td class="num">${fmtNum(x.ganhos)} <b class="dim-pct">${pctCel(x.ganhos, x.leads)}</b></td>
+      <td class="num"><b>${pctCel(x.ganhos, x.apres)}</b></td>
+      <td class="num">${fmtNum(x.perdas)}</td>
+      <td class="num">${fmtNum(x.abertos)}</td>
+      <td class="num">${x.ciclos.length ? mediana(x.ciclos).toFixed(1).replace('.', ',') + ' d'
+        : '<span class="dim">—</span>'}</td>
+    </tr>`).join('');
+  return `
+    <div class="table-wrap">
+      <table class="tab-conv">
+        <thead><tr>
+          <th>${rotuloPessoa}</th>
+          <th class="num">Leads</th>
+          ${temContato ? '<th class="num">Em contato</th>' : ''}
+          <th class="num">Apresentação</th>
+          <th class="num">Venda</th>
+          <th class="num" title="Ganhos sobre quem chegou à apresentação">Fech. da apres.</th>
+          <th class="num">Perdidos</th>
+          <th class="num">Abertos</th>
+          <th class="num" title="Mediana de dias entre a criação da oportunidade e o ganho">Ciclo</th>
+        </tr></thead>
+        <tbody>${linhas}</tbody>
+      </table>
+    </div>`;
+}
+
+/** Carteira aberta: onde os leads estão e há quanto tempo não se mexem. */
+function tabelaCarteira(itens){
+  const comAbertos = itens.filter(x => x.abertos > 0);
+  if(!comAbertos.length) return '<div class="empty-state">Nenhum lead em aberto neste recorte.</div>';
+  const etapas = STAGE_ORDER.filter(e => comAbertos.some(x => x.porGrupo.get(e)));
+  const linhas = comAbertos.map(x => `
+    <tr>
+      <td>${esc(x.pessoa)}</td>
+      <td class="num"><b>${fmtNum(x.abertos)}</b></td>
+      ${etapas.map(e => `<td class="num">${x.porGrupo.get(e) ? fmtNum(x.porGrupo.get(e)) : '<span class="dim">·</span>'}</td>`).join('')}
+      <td class="num">${x.paradas.length ? mediana(x.paradas).toFixed(0) + ' d' : '<span class="dim">—</span>'}</td>
+      <td class="num">${fmtNum(x.parados)} <b class="dim-pct">${pctCel(x.parados, x.abertos)}</b></td>
+    </tr>`).join('');
+  return `
+    <div class="table-wrap">
+      <table class="tab-conv">
+        <thead><tr>
+          <th>Responsável</th><th class="num">Abertos</th>
+          ${etapas.map(e => `<th class="num">${esc(e)}</th>`).join('')}
+          <th class="num" title="Mediana de dias desde a última mudança de etapa">Parado há</th>
+          <th class="num">&gt; ${DIAS_PARADO} dias</th>
+        </tr></thead>
+        <tbody>${linhas}</tbody>
+      </table>
+    </div>`;
+}
+
+/** Principais motivos de perda de cada pessoa. */
+function tabelaMotivosPorPessoa(itens){
+  const comPerda = itens.filter(x => x.perdas > 0);
+  if(!comPerda.length) return '<div class="empty-state">Nenhuma perda neste recorte.</div>';
+  const linhas = comPerda.map(x => {
+    const top = [...x.motivos.entries()].sort((a, b) => b[1] - a[1]).slice(0, 3);
+    return `
+      <tr>
+        <td>${esc(x.pessoa)}</td>
+        <td class="num">${fmtNum(x.perdas)}</td>
+        <td>${top.map(([nome, n]) =>
+          `<span class="chip-motivo">${esc(nome)} <b>${fmtNum(n)}</b> <span class="dim">${pctCel(n, x.perdas)}</span></span>`
+        ).join('')}</td>
+      </tr>`;
+  }).join('');
+  return `
+    <div class="table-wrap">
+      <table class="tab-conv">
+        <thead><tr><th>Responsável</th><th class="num">Perdidos</th><th>Três principais motivos</th></tr></thead>
+        <tbody>${linhas}</tbody>
+      </table>
+    </div>`;
+}
+
+function resumoTime(data, itens, rotulo, rotuloSingular){
+  const leads = itens.reduce((a, x) => a + x.leads, 0);
+  const apres = itens.reduce((a, x) => a + x.apres, 0);
+  const ganhos = itens.reduce((a, x) => a + x.ganhos, 0);
+  const ciclos = itens.flatMap(x => x.ciclos);
+  const semDono = data.length - leads;
+  return `
+    <div class="kpi-grid">
+      <div class="panel">
+        <div class="panel-head"><h3>${fmtNum(itens.length)}</h3><div class="hint">${rotulo} no recorte</div></div>
+        <div class="nota-perfil">${fmtNum(leads)} oportunidades atribuídas${semDono > 0
+          ? ' · ' + fmtNum(semDono) + ' sem ' + rotuloSingular : ''}</div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>${pctCel(ganhos, apres)}</h3><div class="hint">fecham a partir da apresentação</div></div>
+        <div class="nota-perfil">${plural(ganhos, 'venda', 'vendas')} sobre ${plural(apres, 'apresentação', 'apresentações')}</div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>${ciclos.length ? mediana(ciclos).toFixed(1).replace('.', ',') + ' d' : '—'}</h3><div class="hint">ciclo mediano até a venda</div></div>
+        <div class="nota-perfil">${ciclos.length
+          ? 'da criação da oportunidade ao ganho, em ' + plural(ciclos.length, 'venda', 'vendas')
+          : 'nenhuma venda com data no recorte'}</div>
+      </div>
+    </div>`;
+}
+
+function renderSDR(data){
+  const alvo = document.getElementById('aba-sdr');
+  const itens = statsPorPessoa(data, 'sdr');
+
+  alvo.innerHTML = `
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <div class="label">Bloco 01 — Conversão por SDR</div>
+          <h2>DESEMPENHO DO TIME DE PRÉ-VENDAS</h2>
+        </div>
+        <div class="desc">
+          O SDR é o dono da oportunidade no CRM. Cada linha acompanha o lead desde a entrada:
+          quanto vira contato, quanto vira apresentação e quanto fecha.
+        </div>
+      </div>
+
+      ${resumoTime(data, itens, 'SDRs', 'SDR')}
+
+      <div style="height:18px"></div>
+      ${painel('Conversão por SDR', 'Ordenado por volume de leads recebidos', tabelaTime(itens, 'SDR'))}
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <div class="label">Bloco 02 — Carteira em aberto</div>
+          <h2>ONDE OS LEADS ESTÃO PARADOS</h2>
+        </div>
+        <div class="desc">
+          Só oportunidades em aberto, por etapa. "Parado há" conta desde a última mudança de
+          etapa — é o que separa carteira trabalhada de carteira esquecida.
+        </div>
+      </div>
+      ${painel('Carteira aberta por etapa', '', tabelaCarteira(itens))}
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <div class="label">Bloco 03 — Perdas</div>
+          <h2>POR QUE CADA UM PERDE</h2>
+        </div>
+        <div class="desc">
+          Perder por "sem perfil" é problema de origem do lead; perder por "não tem interesse"
+          é problema de abordagem. A distinção muda quem precisa agir.
+        </div>
+      </div>
+      ${painel('Motivos de perda por SDR', '', tabelaMotivosPorPessoa(itens))}
+    </section>`;
+}
+
+function renderCloser(data){
+  const alvo = document.getElementById('aba-closer');
+  const itens = statsPorPessoa(data, 'closer');
+  const comCloser = itens.reduce((a, x) => a + x.leads, 0);
+
+  /* O aviso fica na tela, não só neste comentário: sem ele alguém compara
+     um closer de 22 oportunidades com um SDR de 1.788 e conclui besteira. */
+  const naBase = RAW.filter(r => String(r.closer || '').trim()).length;
+  const aviso = `
+    <div class="aviso-dado">
+      <b>Campo novo.</b> O closer vem de um custom field preenchido à mão, criado em
+      31/08/2026 — a base inteira tem ${fmtNum(naBase)} de ${fmtNum(RAW.length)} oportunidades marcadas.
+      Os números abaixo servem para acompanhar o que está sendo preenchido agora,
+      não para avaliar o time. A leitura fica confiável conforme o campo for adotado.
+    </div>`;
+
+  alvo.innerHTML = `
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <div class="label">Bloco 01 — Fechamento</div>
+          <h2>DESEMPENHO DOS CLOSERS</h2>
+        </div>
+        <div class="desc">
+          O marco é chegar à apresentação e virar venda — é a conta que isola o trabalho
+          de fechamento do volume de leads que a pessoa recebeu.
+        </div>
+      </div>
+
+      ${aviso}
+
+      ${comCloser
+        ? resumoTime(data, itens, 'Closers', 'closer') +
+          '<div style="height:18px"></div>' +
+          painel('Conversão por closer', fmtNum(comCloser) + ' de ' + fmtNum(data.length) +
+            ' oportunidades do recorte têm closer preenchido', tabelaTime(itens, 'Closer')) +
+          '<div style="height:18px"></div>' +
+          painel('Carteira aberta por etapa', '', tabelaCarteira(itens)) +
+          '<div style="height:18px"></div>' +
+          painel('Motivos de perda por closer', '', tabelaMotivosPorPessoa(itens))
+        : `<div class="empty-state">
+             Nenhuma oportunidade com closer preenchido neste recorte.
+             O campo começou a ser usado em 31/08/2026 — amplie o período para ver os primeiros casos.
+           </div>`}
+    </section>`;
+}
+
 /* Abas. Chart.js mede o container na criação, e num container escondido isso
    dá zero — então a aba só desenha quando fica visível. */
 let ABA_ATIVA = 'campanhas';
+
+const ABAS = ['campanhas', 'perfil', 'sdr', 'closer'];
 
 const CABECALHOS = {
   campanhas: {
@@ -2219,6 +2558,14 @@ const CABECALHOS = {
   perfil: {
     titulo: 'PERFIL DO <span class="accent">LEAD</span>',
     desc: 'Quem entra no funil e quais perfis avançam — porte, faturamento, segmento e horário de entrada, cruzados com apresentação e venda.',
+  },
+  sdr: {
+    titulo: 'PERFORMANCE DE <span class="accent">SDR</span>',
+    desc: 'Conversão, carteira em aberto e motivos de perda por dono da oportunidade — do lead que entra ao que chega à apresentação.',
+  },
+  closer: {
+    titulo: 'PERFORMANCE DE <span class="accent">CLOSER</span>',
+    desc: 'Fechamento a partir da apresentação, pelo custom field de closer. Campo novo: poucos registros ainda.',
   },
 };
 
@@ -2239,8 +2586,7 @@ function wireAbas(){
     if(!btn || btn.classList.contains('active')) return;
     ABA_ATIVA = btn.dataset.aba;
     barra.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
-    document.getElementById('aba-campanhas').hidden = ABA_ATIVA !== 'campanhas';
-    document.getElementById('aba-perfil').hidden = ABA_ATIVA !== 'perfil';
+    for(const nome of ABAS) document.getElementById('aba-' + nome).hidden = ABA_ATIVA !== nome;
     atualizarCabecalho();
     render();
     window.scrollTo({ top: 0, behavior: 'smooth' });

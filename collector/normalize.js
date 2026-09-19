@@ -256,7 +256,7 @@ function atribuicaoNativa(contact) {
 /**
  * Monta a linha no formato do CSV antigo.
  *
- * Os campos extras no fim (ids de pipeline e etapa, closer_id, datas de
+ * Os campos extras no fim (ids de pipeline e etapa, sdr_id, datas de
  * mudanca, motivo_perda) nao existiam na planilha. Os ids servem para o
  * dashboard casar a linha com a etapa do CRM sem depender de texto; o resto
  * e para a futura aba de performance do time de vendas.
@@ -296,7 +296,14 @@ export function buildRow(opp, ctx) {
     dt_criacao_oportunidade: toSpDateTime(opp.createdAt),
     dt_criacao_contato: toSpDateTime(contact.dateAdded || contact.createdAt),
     status: opp.status || '',
-    closer: campo(cf, 'closer') || usersById.get(opp.assignedTo) || '',
+    /* SDR e closer sao papeis diferentes e vinham colapsados na mesma coluna.
+       O dono da oportunidade (assignedTo) e o SDR: e ele que trabalha o lead
+       desde a entrada, e a maioria dos pipelines leva o nome dele. O closer
+       vem do custom field `opportunity.closer`, preenchido a mao e recente —
+       fica vazio na maior parte da base, e e assim que tem que ficar: cair
+       para o assignedTo faria todo SDR aparecer como closer de si mesmo. */
+    sdr: usersById.get(opp.assignedTo) || '',
+    closer: campo(cf, 'closer'),
     first_atribution_medium: att('first', 'medium'),
     last_atribution_medium: att('last', 'medium'),
     first_atribution_campaign: att('first', 'campaign'),
@@ -313,7 +320,7 @@ export function buildRow(opp, ctx) {
     id_estagio: opp.pipelineStageId || '',
 
     /* --- extras para a aba de performance de vendas --- */
-    closer_id: opp.assignedTo || '',
+    sdr_id: opp.assignedTo || '',
     status_oportunidade: opp.status || '',
     /* O CRM tem 11 motivos cadastrados, mas as oportunidades antigas apontam
        para ~29 ids que nao existem mais (motivos apagados ou renomeados) e
