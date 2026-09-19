@@ -1,0 +1,14 @@
+# Copie este arquivo para worker/.dev.vars e preencha.
+# worker/.dev.vars esta no .gitignore e NUNCA deve ser commitado.
+
+# Token da private integration do GHL (comeca com pit-)
+GHL_TOKEN=
+
+# ID da sub-conta (location) no GHL
+GHL_LOCATION_ID=
+
+# Senha que o dashboard vai pedir para liberar os dados
+DASH_PASSWORD=
+
+# Em desenvolvimento local, libera CORS de qualquer origem
+DEV_ALLOW_ALL=true

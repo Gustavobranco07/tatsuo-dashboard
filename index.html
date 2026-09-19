@@ -166,10 +166,22 @@
   .legend{display:flex;gap:16px;flex-wrap:wrap}
   .legend-item{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted)}
   .legend-item .sw{width:10px;height:10px;border-radius:2px}
-  .chart-wrap{position:relative;height:340px}
-  .chart-wrap.tall{height:380px}
+  /* min-height, e não height: o gráfico precisa poder esticar até o pé do
+     card quando o funil ao lado tem muitas etapas. O JS ainda eleva esse
+     piso conforme o número de etapas, para nenhum nome ser pulado. */
+  .chart-wrap{position:relative;min-height:340px}
+  .chart-wrap.tall{min-height:380px}
 
   .two-col{display:grid;grid-template-columns:.95fr 1.05fr;gap:18px}
+  /* Os dois painéis já esticam para a altura da linha do grid; o painel
+     vira coluna flex para o gráfico ocupar a sobra em vez de deixar um
+     vazio embaixo. Escopo em .two-col porque .panel é usado em outros
+     lugares que não querem isso. */
+  .two-col .panel{display:flex;flex-direction:column}
+  /* flex-basis 0, e não auto: com base auto a altura passaria a depender do
+     conteúdo, e um canvas responsivo dentro de um container medido pelo
+     próprio conteúdo faz o Chart.js entrar em laço de crescimento. */
+  .two-col .chart-wrap{flex:1 1 0}
 
   /* ---------- ORIGIN SUMMARY ---------- */
   .origin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px}
@@ -259,21 +271,37 @@
   }
   .error-card button:hover{background:var(--accent);border-color:var(--accent)}
 
+  .auth-card{
+    max-width:380px;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:30px 28px;text-align:center;
+  }
+  .auth-card h3{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:.12em;margin-bottom:6px}
+  .auth-card p{color:var(--muted);font-size:12px;margin-bottom:20px;letter-spacing:.04em}
+  .auth-card input{
+    width:100%;padding:12px 14px;margin-bottom:12px;border:1px solid var(--border);border-radius:8px;
+    background:#0D0D0D;color:var(--text);font-family:inherit;font-size:14px;text-align:center;letter-spacing:.12em;
+  }
+  .auth-card input:focus{outline:none;border-color:var(--primary)}
+  .auth-card button{
+    width:100%;padding:11px 20px;border:1px solid var(--primary);background:var(--primary);color:var(--text);
+    border-radius:8px;font-size:11px;letter-spacing:.2em;text-transform:uppercase;cursor:pointer;
+  }
+  .auth-card button:hover{background:var(--accent);border-color:var(--accent)}
+  .auth-card .msg{color:var(--accent);font-size:12px;margin-top:12px;min-height:16px}
+
   .empty-state{padding:40px 20px;text-align:center;color:var(--muted);font-size:13px}
 
   /* ---------- CREATIVES BLOCK ---------- */
-  .creative-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px}
-  .ckpi{background:var(--card);padding:14px 16px}
-  .ckpi .ck-label{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
-  .ckpi .ck-val{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:.02em;line-height:1}
-  .ckpi .ck-sub{font-size:10.5px;color:var(--dim);margin-top:4px}
+  .creative-kpis{display:grid;grid-auto-flow:column;grid-auto-columns:minmax(0,1fr);gap:1px;background:var(--border);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:16px}
+  .ckpi{background:var(--card);padding:12px 11px;min-width:0}
+  .ckpi .ck-label{font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:5px;line-height:1.25}
+  .ckpi .ck-val{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:.01em;line-height:1;white-space:nowrap}
+  .ckpi .ck-sub{font-size:9.5px;color:var(--dim);margin-top:3px;line-height:1.3}
+  @media(max-width:1280px){.ckpi{padding:10px 8px}.ckpi .ck-val{font-size:18px}.ckpi .ck-label{font-size:8.5px;letter-spacing:.04em}}
   .goalbox{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 16px;margin-bottom:16px;flex-wrap:wrap}
   .goalbox label{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
   .goalbox input{background:var(--bg-2);border:1px solid var(--border);color:var(--text);padding:8px 12px;border-radius:8px;font-family:inherit;font-size:14px;font-weight:600;width:110px}
   .goalbox input:focus{outline:none;border-color:var(--accent)}
   .goalbox .note{font-size:11px;color:var(--dim);flex:1;min-width:200px}
-  .goalbox .multi-select{min-width:180px}
-  .goalbox .ms-panel{min-width:200px}
   .pill{font-size:10.5px;font-weight:700;letter-spacing:.04em;padding:4px 10px;border-radius:999px;display:inline-block;white-space:nowrap}
   .pill.esc{color:#3FB37F;background:rgba(63,179,127,.14)}
   .pill.obs{color:#E8C547;background:rgba(232,197,71,.12)}
@@ -283,6 +311,8 @@
   .pill.off{color:#8A9AAB;background:rgba(138,154,171,.12)}
   .pill.unk{color:var(--dim);background:rgba(255,255,255,.04)}
   tr.is-off td{opacity:.72}
+  .goalbox .multi-select{min-width:180px}
+  .goalbox .ms-panel{min-width:200px}
   .trap{color:#E5484D;font-weight:800}
   .subpct{font-size:10.5px;color:var(--dim);font-weight:400;margin-left:3px}
   .level-toggle{display:flex;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;margin-left:auto}
@@ -332,7 +362,7 @@
     .kpi-grid{grid-template-columns:1fr}
     .summary-pill{display:none}
     .panel{padding:16px}
-    .chart-wrap{height:280px}
+    .chart-wrap{min-height:280px}
     .page-head h1{font-size:30px}
     .section-head .desc{text-align:left}
   }
@@ -348,6 +378,29 @@
   .delta{font-size:10px;font-weight:600}
   .delta.up{color:#3aa56b}.delta.down{color:#E86A5B}.delta.flat{color:var(--dim)}
   .cellB{font-size:11px;color:#E8C547;margin-top:2px;white-space:nowrap}
+  /* ---------- SEGMENTED (vertical) ---------- */
+  .seg{display:flex;border:1px solid var(--border);border-radius:8px;overflow:hidden;background:var(--bg-2)}
+  .seg button{background:transparent;border:none;color:var(--muted);padding:9px 13px;font-family:inherit;font-size:11px;letter-spacing:.1em;text-transform:uppercase;cursor:pointer;transition:.15s;white-space:nowrap}
+  .seg button + button{border-left:1px solid var(--border)}
+  .seg button:hover{color:var(--text)}
+  .seg button.active{background:var(--primary);color:#fff;font-weight:600}
+  .seg .seg-n{font-size:10px;opacity:.65;margin-left:5px;letter-spacing:0}
+  .summary-pill{flex-wrap:wrap}
+  /* ---------- TIER (ouro/prata/bronze) ---------- */
+  .tier-chip{display:inline-flex;align-items:center;gap:5px;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;padding:2px 7px;border-radius:5px;border:1px solid var(--border);background:var(--bg-2)}
+  #tier-matrix td.cell b{font-family:'Bebas Neue',sans-serif;font-size:19px;letter-spacing:.02em;font-weight:400}
+  #tier-matrix td.cell span{display:block;font-size:10.5px;color:var(--dim);margin-top:1px}
+  #tier-matrix .rowlab{white-space:nowrap}
+  /* ---------- CRIATIVOS: colunas travadas ---------- */
+  #creatives-table{min-width:1700px}
+  #creatives-table th.stick,#creatives-table td.stick{position:sticky;z-index:2;background:var(--card)}
+  #creatives-table thead th.stick{z-index:4;background:#181818}
+  #creatives-table .stick-1{left:0;min-width:190px;max-width:190px}
+  #creatives-table .stick-2{left:190px;width:38px;min-width:38px}
+  #creatives-table .stick-3{left:228px;min-width:210px;box-shadow:1px 0 0 var(--border)}
+  #creatives-table.lvl-campaign .stick-2{left:0}
+  #creatives-table.lvl-campaign .stick-3{left:38px}
+  .tiers{display:flex;gap:7px;justify-content:flex-end;font-size:10.5px;margin-top:3px;letter-spacing:.03em;font-variant-numeric:tabular-nums}
 </style>
 </head>
 <body>
@@ -395,6 +448,10 @@
             <input type="date" id="f-endB" />
           </div>
         </div>
+        <div class="field" id="field-vert">
+          <label>Vertical da campanha</label>
+          <div id="f-vert" class="multi-select"></div>
+        </div>
         <div class="field">
           <label>Pipeline</label>
           <div id="f-pipeline" class="multi-select"></div>
@@ -406,6 +463,10 @@
         <div class="field">
           <label>Tag</label>
           <div id="f-tag" class="multi-select"></div>
+        </div>
+        <div class="field" id="field-tier">
+          <label>Ouro / Prata / Bronze</label>
+          <div id="f-tier" class="multi-select"></div>
         </div>
         <div class="field">
           <label>Origem</label>
@@ -422,18 +483,14 @@
         <button class="clear-btn" id="clear-btn"><span class="x">×</span> Limpar filtros</button>
       </div>
 
-      <!-- METRICS STRIP (logo abaixo dos filtros, alinhado à direita) -->
+      <!-- INVESTIMENTO (total x atribuído) -->
       <div class="metrics-strip">
         <div class="summary-pill" id="summary-pill">
-          <div><div class="k">Leads</div><div class="v" id="sm-leads">—</div></div>
+          <div><div class="k">Investido — total</div><div class="v cost" id="sm-spend">—</div></div>
           <div class="sep"></div>
-          <div><div class="k">Vendas</div><div class="v" id="sm-sales">—</div></div>
+          <div><div class="k">Com atribuição de leads</div><div class="v cost" id="sm-spend-attr">—</div></div>
           <div class="sep"></div>
-          <div><div class="k">Investido</div><div class="v cost" id="sm-spend">—</div></div>
-          <div class="sep"></div>
-          <div><div class="k">Custo / Lead</div><div class="v cost" id="sm-cpl">—</div></div>
-          <div class="sep"></div>
-          <div><div class="k">Custo / Venda</div><div class="v cost" id="sm-cps">—</div></div>
+          <div><div class="k">Sem atribuição</div><div class="v cost" id="sm-spend-unattr">—</div></div>
         </div>
       </div>
 
@@ -448,16 +505,6 @@
         </div>
 
         <div class="kpi-grid" id="kpi-grid"></div>
-
-        <div class="panel">
-          <div class="panel-head">
-            <h3>Comparativo por tag</h3>
-            <div class="legend">
-              <div class="legend-item"><span class="sw" style="background:#C0392B"></span>Leads</div>
-            </div>
-          </div>
-          <div class="chart-wrap"><canvas id="chart-tags"></canvas></div>
-        </div>
       </section>
 
       <!-- BLOCK 2 -->
@@ -497,7 +544,7 @@
             <div class="label">Bloco 03 — Performance de Criativos</div>
             <h2>PERFORMANCE POR CRIATIVO</h2>
           </div>
-          <div class="desc">Agrupado por <code>last_atribution_content</code>, com gasto real por anúncio (coluna <code>anuncio</code> da aba gasto_campanha). Traz <b>todos os criativos</b> do período — inclusive os que ainda não geraram leads. A coluna <b>Status</b> vem da coluna <code>status</code> da aba gasto_campanha (ATIVO / INATIVO). Respeita os filtros do topo.</div>
+          <div class="desc">Agrupado por <code>last_atribution_content</code>, com gasto real por anúncio (coluna <code>anuncio</code> da aba gasto_campanha). Respeita os filtros do topo. Sob cada tag, <b style="color:#E8C547">O</b> = ouro, <b style="color:#AEB8C2">P</b> = prata, <b style="color:#B0722F">B</b> = bronze.</div>
         </div>
         <div class="creative-kpis" id="creative-kpis"></div>
         <div class="goalbox">
@@ -505,8 +552,8 @@
           <input type="number" id="cplq-goal" min="0" step="10">
           <label>Status</label>
           <div id="f-adstatus" class="multi-select"></div>
-          <span class="note">Define a ação Escalar / Observar / Matar — recalcula ao vivo. Criativo INATIVO aparece como Pausado. CPL qualificado = investido ÷ (MQL + Q-MQL).</span>
-          <div class="level-toggle" id="level-toggle">
+          <span class="note">Define o status Escalar / Observar / Matar — recalcula ao vivo. CPL qualificado = investido ÷ (MQL + Q-MQL).</span>
+          <div class="level-toggle" id="level-toggle" style="margin-left:10px">
             <button type="button" data-level="creative" class="active">Criativos</button>
             <button type="button" data-level="campaign">Campanhas</button>
           </div>
@@ -516,20 +563,24 @@
             <table id="creatives-table">
               <thead>
                 <tr>
-                  <th data-sort="campaign" id="th-campanha">Campanha</th>
-                  <th></th>
-                  <th data-sort="creative" id="th-level">Criativo</th>
+                  <th data-sort="campaign" id="th-campanha" class="stick stick-1">Campanha</th>
+                  <th class="stick stick-2"></th>
+                  <th data-sort="creative" id="th-level" class="stick stick-3">Criativo</th>
                   <th data-sort="statusRank">Status</th>
                   <th class="num" data-sort="invest">Investido</th>
                   <th class="num" data-sort="leads">Leads</th>
-                  <th class="num" data-sort="mql">MQL</th>
-                  <th class="num" data-sort="qmql">QMQL</th>
-                  <th class="num" data-sort="nmql">NMQL</th>
                   <th class="num" data-sort="cpl">CPL</th>
+                  <th class="num" data-sort="mql">MQL</th>
+                  <th class="num" data-sort="qmql">Q-MQL</th>
+                  <th class="num" data-sort="nmql">N-MQL</th>
                   <th class="num" data-sort="cplQual">CPL qualif.</th>
-                  <th class="num" data-sort="apres">Apres. agendada</th>
+                  <th class="num" data-sort="agend">Reuniões agend.</th>
+                  <th class="num" data-sort="cpAgend">Custo / agend.</th>
+                  <th class="num" data-sort="realiz">Reuniões realiz.</th>
+                  <th class="num" data-sort="cpReal">Custo / realiz.</th>
                   <th class="num" data-sort="vendas">Vendas</th>
-                  <th class="num" data-sort="convVenda">Apres. → Venda</th>
+                  <th class="num" data-sort="cpVenda">Custo / venda</th>
+                  <th class="num" data-sort="convReal">Realiz. → Venda</th>
                   <th>Ação</th>
                 </tr>
               </thead>
@@ -567,6 +618,7 @@
                   <th>Funil</th>
                   <th>Etapa</th>
                   <th>Classificação</th>
+                  <th>Reunião</th>
                   <th class="num">Valor</th>
                   <th>Canal</th>
                   <th>Campanha</th>
@@ -595,7 +647,7 @@
   <div class="veil" id="veil">
     <div class="spinner"></div>
     <div class="label">CARREGANDO DADOS</div>
-    <div class="sub">Sincronizando com Google Sheets…</div>
+    <div class="sub" id="veil-sub">Sincronizando com o CRM…</div>
     <div class="progress"><span></span></div>
   </div>
 
@@ -609,47 +661,295 @@
     </div>
   </div>
 
+  <!-- SENHA (hidden until needed) -->
+  <div class="veil hide" id="auth-veil" style="display:none">
+    <form class="auth-card" id="auth-form" autocomplete="off">
+      <h3>ACESSO RESTRITO</h3>
+      <p>Informe a senha do dashboard para carregar os dados.</p>
+      <input type="password" id="auth-input" placeholder="senha" autocomplete="current-password">
+      <button type="submit">Entrar</button>
+      <div class="msg" id="auth-msg"></div>
+    </form>
+  </div>
+
 <script>
 /* =========================================================
    CONFIG
 ========================================================= */
-const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQT0oSarkKLYUFQPj8VMkpf06iFbSLe6syaSWy68U-5pC_ElFJ6Szv4AIThT9iYlDN_TGGwGVwRhCX3/pub?gid=0&single=true&output=csv';
+/* Leads e oportunidades vêm do Worker, que fala com a API do GHL.
+   O token do CRM fica lá — nunca nesta página. */
+const API_URL = 'https://tatsuo-dash-api.SEU-SUBDOMINIO.workers.dev/data';
+
+/* Gasto de anúncio continua na planilha: a API do GHL não expõe
+   investimento de mídia. */
 const SPEND_CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQT0oSarkKLYUFQPj8VMkpf06iFbSLe6syaSWy68U-5pC_ElFJ6Szv4AIThT9iYlDN_TGGwGVwRhCX3/pub?gid=856785083&single=true&output=csv';
+
+/* Fonte antiga, mantida só para comparar os números durante a migração.
+   Abra o dashboard com ?src=csv para voltar a ler a planilha de leads. */
+const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vQT0oSarkKLYUFQPj8VMkpf06iFbSLe6syaSWy68U-5pC_ElFJ6Szv4AIThT9iYlDN_TGGwGVwRhCX3/pub?gid=0&single=true&output=csv';
+const USE_CSV = new URLSearchParams(location.search).get('src') === 'csv';
 
 const TAG_ORDER = ['MQL','Q-MQL','N-MQL'];
 const TAG_COLOR = { 'MQL':'#C0392B', 'Q-MQL':'#E8C547', 'N-MQL':'#5A6B7A' };
 const TAG_DESC  = { 'MQL':'Marketing Qualified Lead', 'Q-MQL':'Quase MQL — qualificação intermediária', 'N-MQL':'Não qualificado' };
 
-const STAGE_ORDER = ['Lead','ClaudIA','Tentando Contato','Em Contato','Apresentação Agendada','Em Negociação','Boca do Gol','Venda'];
-const STAGE_STANDBY = 'Standby';
-// Gradient bordô → dourado, do topo do funil até a venda
-const STAGE_COLOR = {
-  'Lead':'#5A6B7A',
-  'ClaudIA':'#6F4F60',
-  'Tentando Contato':'#8A3F4D',
-  'Em Contato':'#A02E3A',
-  'Apresentação Agendada':'#B73348',
-  'Em Negociação':'#C0392B',
-  'Boca do Gol':'#D4671F',
-  'Venda':'#E8C547',
-  'Standby':'#3A3A3A'
+/* Sub-classificação de qualidade dentro de cada tag */
+const TIER_ORDER = ['Ouro','Prata','Bronze'];
+const TIER_COLOR = { 'Ouro':'#E8C547', 'Prata':'#AEB8C2', 'Bronze':'#B0722F' };
+function normTier(s){
+  if(!s) return '';
+  const t = String(s).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  if(/ouro|gold/.test(t)) return 'Ouro';
+  if(/prata|silver/.test(t)) return 'Prata';
+  if(/bronze/.test(t)) return 'Bronze';
+  return '';
+}
+
+/* Vertical da campanha — detectada por tag / pipeline / campanha */
+const VERT_ORDER = ['Rio Preto','Diagnóstico'];
+function detectVertical(...parts){
+  const t = parts.filter(Boolean).join(' | ').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  if(/rio[\s\-_]*preto|sjrp/.test(t)) return 'Rio Preto';
+  if(/diagnost/.test(t)) return 'Diagnóstico';
+  return '';
+}
+
+/* =========================================================
+   ETAPAS DO FUNIL — vêm do CRM, não daqui
+
+   A ordem sai de `position` e a participação no funil sai de `showInFunnel`,
+   ambos lidos da API do GHL e enviados no snapshot. Mexer no funil passa a
+   ser mexer na configuração do pipeline no CRM; ninguém precisa tocar aqui.
+
+   As três variáveis são recalculadas a cada render, porque dependem de quais
+   pipelines estão filtrados no momento.
+========================================================= */
+let PIPELINES = [];        // estrutura vinda do snapshot
+let STAGE_ORDER = [];      // etapas dentro do funil, na ordem do CRM
+let FORA_DO_FUNIL = [];    // etapas com showInFunnel = false
+let STAGE_COLOR = {};
+
+/* Sinônimos: usados SÓ para não duplicar a mesma etapa na visão consolidada,
+   quando pipelines diferentes escrevem o mesmo passo de formas diferentes.
+   Não definem ordem nem participação no funil — isso é o CRM que manda. */
+const STAGE_ALIAS = {
+  'claud ia':'CláudIA', 'claud-ia':'CláudIA', 'claudia':'CláudIA',
+  'leads':'Lead',
+  'reuniao agendada':'Apresentação Agendada',
+  'negociacao':'Em Negociação',
+  'stand by':'Standby', 'stand-by':'Standby',
+  'vendido':'Venda', 'fechado':'Venda', 'venda ganha':'Venda'
 };
+
+/* =========================================================
+   AGRUPAMENTO DA VISÃO CONSOLIDADA
+
+   Os 19 pipelines têm 12 layouts de etapas diferentes. Sem filtro de
+   pipeline isso renderia 25 degraus, com "Dia 3" e "Entrevista Agendada"
+   como passos independentes. Estes seis grupos são o funil que o time usa
+   para raciocinar.
+
+   Vale SÓ quando nenhum pipeline está filtrado. Escolhendo um pipeline, o
+   dashboard volta às etapas exatas do CRM.
+========================================================= */
+const GRUPOS_CONSOLIDADOS = [
+  { grupo:'Lead',                  etapas:['Lead','Aplicação'] },
+  { grupo:'Tentando Contato',      etapas:['Tentando Contato','CláudIA','Abordagem',
+                                           'Dia 1','Dia 2','Dia 3','Dia 4','Dia 5','Dia 6','Dia 7',
+                                           'MQL'] },
+  { grupo:'Em Contato',            etapas:['Em Contato','Em Qualificação'] },
+  { grupo:'Apresentação Agendada', etapas:['Apresentação Agendada','Entrevista','Entrevista Agendada'] },
+  { grupo:'Fechamento',            etapas:['Em Negociação','Boca do Gol','Aguardando Pagamento',
+                                           'Reunião Realizada','Entrevista Realizada','Fechamento'] },
+  { grupo:'Venda',                 etapas:['Venda'] }
+];
+
+/** etapa do CRM -> nome do grupo */
+const GRUPO_DE = new Map();
+for(const g of GRUPOS_CONSOLIDADOS){
+  for(const e of g.etapas) GRUPO_DE.set(e, g.grupo);
+}
+
 function normStage(s){
   if(!s) return '';
   const t = String(s).trim().toLowerCase()
-    .normalize('NFD').replace(/[\u0300-\u036f]/g,'');
-  const map = {
-    'lead':'Lead',
-    'claudia':'ClaudIA','claud ia':'ClaudIA','claud-ia':'ClaudIA',
-    'tentando contato':'Tentando Contato','tentando':'Tentando Contato',
-    'em contato':'Em Contato',
-    'apresentacao agendada':'Apresentação Agendada','apresentação agendada':'Apresentação Agendada','reuniao agendada':'Apresentação Agendada','reunião agendada':'Apresentação Agendada',
-    'em negociacao':'Em Negociação','em negociação':'Em Negociação','negociacao':'Em Negociação',
-    'boca do gol':'Boca do Gol',
-    'venda':'Venda','vendido':'Venda','fechado':'Venda',
-    'standby':'Standby','stand by':'Standby','stand-by':'Standby'
-  };
-  return map[t] || String(s).trim();
+    .normalize('NFD').replace(/[̀-ͯ]/g,'');
+  return STAGE_ALIAS[t] || String(s).trim();
+}
+
+/* Gradiente ardósia → bordô → dourado, distribuído pelo comprimento do funil.
+   Substitui o mapa fixo por nome: funciona para qualquer conjunto de etapas
+   que vier do CRM, inclusive "Dia 1" a "Dia 7". */
+const GRADIENTE = [
+  { t:0,   rgb:[0x5A,0x6B,0x7A] },
+  { t:0.7, rgb:[0xC0,0x39,0x2B] },
+  { t:1,   rgb:[0xE8,0xC5,0x47] }
+];
+function corDaEtapa(i, total){
+  if(total <= 1) return '#C0392B';
+  const t = i / (total - 1);
+  let a = GRADIENTE[0], b = GRADIENTE[GRADIENTE.length-1];
+  for(let k=0; k<GRADIENTE.length-1; k++){
+    if(t >= GRADIENTE[k].t && t <= GRADIENTE[k+1].t){ a = GRADIENTE[k]; b = GRADIENTE[k+1]; break; }
+  }
+  const p = b.t === a.t ? 0 : (t - a.t) / (b.t - a.t);
+  const c = a.rgb.map((v,j) => Math.round(v + (b.rgb[j]-v)*p));
+  return '#' + c.map(v => v.toString(16).padStart(2,'0')).join('');
+}
+
+/**
+ * Recalcula STAGE_ORDER, FORA_DO_FUNIL e STAGE_COLOR a partir dos pipelines
+ * em vista.
+ *
+ * Com um pipeline só filtrado, o funil é exatamente o daquele pipeline. Com
+ * vários, as etapas são unidas por nome e ordenadas pela mediana de
+ * `position` — o melhor palpite de "quão fundo no funil" um passo está,
+ * quando cada pipeline tem um layout diferente.
+ */
+function rebuildStages(nomesSelecionados){
+  const emVista = (nomesSelecionados && nomesSelecionados.size)
+    ? PIPELINES.filter(p => nomesSelecionados.has(p.nome))
+    : PIPELINES;
+
+  const agregado = new Map();   // nome canônico -> { pos:[], dentro, fora }
+  for(const p of emVista){
+    for(const s of p.stages || []){
+      const nome = normStage(s.nome);
+      if(!agregado.has(nome)) agregado.set(nome, { pos:[], dentro:0, fora:0, pipes:0 });
+      const a = agregado.get(nome);
+      a.pos.push(s.position);
+      a.pipes++;
+      s.showInFunnel ? a.dentro++ : a.fora++;
+    }
+  }
+
+  const mediana = arr => { const b=[...arr].sort((x,y)=>x-y); return b[Math.floor(b.length/2)]; };
+
+  const dentro = [], fora = [];
+  for(const [nome, a] of agregado){
+    // "Standby" vem com showInFunnel=false em 13 pipelines e true em um
+    // ("Stand-by"). Maioria decide; empate fica dentro do funil.
+    (a.dentro >= a.fora ? dentro : fora).push({ nome, pos: mediana(a.pos), pipes: a.pipes });
+  }
+
+  /* Empate de posição: a etapa que aparece em mais pipelines vem primeiro.
+     Sem isso "Aguardando Pagamento" (2 pipelines, posição 0) abriria o funil
+     consolidado na frente de "Lead" (17 pipelines), só por ordem alfabética. */
+  const porPosicao = (a,b) =>
+    a.pos - b.pos || b.pipes - a.pipes || a.nome.localeCompare(b.nome,'pt-BR');
+  dentro.sort(porPosicao);
+  fora.sort(porPosicao);
+
+  STAGE_ORDER = dentro.map(x => x.nome);
+  FORA_DO_FUNIL = fora.map(x => x.nome);
+
+  STAGE_COLOR = {};
+  STAGE_ORDER.forEach((nome,i) => { STAGE_COLOR[nome] = corDaEtapa(i, STAGE_ORDER.length); });
+  FORA_DO_FUNIL.forEach(nome => { STAGE_COLOR[nome] = '#3A3A3A'; });
+}
+
+/* Ordem de reserva, usada só quando não há estrutura de pipeline: o modo
+   ?src=csv, que lê a planilha antiga e não tem como saber a configuração do
+   CRM. Serve para a comparação lado a lado continuar funcionando. */
+const ORDEM_LEGADA = ['Lead','CláudIA','ClaudIA','Tentando Contato','Em Contato',
+  'Apresentação Agendada','Em Negociação','Boca do Gol','Venda'];
+
+function rebuildStagesDosDados(rows){
+  const vistos = [...new Set(rows.map(r => r.stage).filter(Boolean))];
+  const idx = s => { const i = ORDEM_LEGADA.indexOf(s); return i === -1 ? 900 : i; };
+  STAGE_ORDER = vistos.filter(s => s !== 'Standby').sort((a,b) => idx(a)-idx(b) || a.localeCompare(b,'pt-BR'));
+  FORA_DO_FUNIL = vistos.filter(s => s === 'Standby');
+  STAGE_COLOR = {};
+  STAGE_ORDER.forEach((nome,i) => { STAGE_COLOR[nome] = corDaEtapa(i, STAGE_ORDER.length); });
+  FORA_DO_FUNIL.forEach(nome => { STAGE_COLOR[nome] = '#3A3A3A'; });
+}
+
+/**
+ * Monta o funil consolidado a partir de GRUPOS_CONSOLIDADOS.
+ *
+ * Etapa do CRM que não esteja em nenhum grupo vai para "fora do funil" e é
+ * anunciada no console. Somar num grupo errado falsearia a conversão, e
+ * descartar faria a soma do funil não bater com o total de oportunidades.
+ */
+function rebuildStagesAgrupados(){
+  const noCrm = new Set();
+  for(const p of PIPELINES) for(const s of p.stages || []) noCrm.add(normStage(s.nome));
+
+  // etapas que o CRM marcou como fora do funil continuam fora
+  const foraPorConfig = new Set(FORA_DO_FUNIL);
+
+  const semGrupo = [...noCrm].filter(e => !GRUPO_DE.has(e) && !foraPorConfig.has(e));
+  if(semGrupo.length){
+    console.warn('[funil] etapas sem grupo em GRUPOS_CONSOLIDADOS, jogadas para fora do funil:', semGrupo);
+  }
+
+  STAGE_ORDER = GRUPOS_CONSOLIDADOS.map(g => g.grupo);
+  FORA_DO_FUNIL = [...foraPorConfig, ...semGrupo];
+
+  STAGE_COLOR = {};
+  STAGE_ORDER.forEach((nome,i) => { STAGE_COLOR[nome] = corDaEtapa(i, STAGE_ORDER.length); });
+  FORA_DO_FUNIL.forEach(nome => { STAGE_COLOR[nome] = '#3A3A3A'; });
+}
+
+/** No modo agrupado, a etapa de uma linha é o grupo dela. */
+function etapaExibida(r, agrupado){
+  if(!agrupado) return r.stage;
+  return GRUPO_DE.get(r.stage) || r.stage;   // sem grupo => fica fora do funil
+}
+
+let MODO_ETAPA = null;   // assinatura de modo + pipelines selecionados
+
+/**
+ * Recalcula as etapas conforme o filtro de pipeline em vigor e carimba
+ * `stageView` em cada linha — a etapa que as agregações devem usar.
+ */
+function atualizarEtapas(){
+  const selecionados = MS.pipeline ? MS.pipeline.getValues() : null;
+  const agrupado = PIPELINES.length > 0 && !(selecionados && selecionados.size);
+
+  let modo;
+  if(!PIPELINES.length){
+    rebuildStagesDosDados(RAW);
+    modo = 'legado';
+  } else {
+    rebuildStages(selecionados);        // define FORA_DO_FUNIL a partir do CRM
+    if(agrupado){ rebuildStagesAgrupados(); modo = 'grupos'; }
+    else modo = 'cru';
+  }
+
+  for(const r of RAW) r.stageView = etapaExibida(r, modo === 'grupos');
+
+  /* O filtro de estágio passa a oferecer grupos ou etapas cruas conforme o
+     modo. Só recria o dropdown quando o modo muda: recriar a cada render
+     fecharia o painel na cara de quem está escolhendo. */
+  /* Recria só quando o conjunto de etapas possíveis muda — ou seja, quando
+     muda o modo ou a seleção de pipelines. Recriar a cada render fecharia o
+     painel na cara de quem está escolhendo. */
+  const assinatura = modo + '|' + [...(selecionados || [])].sort().join('');
+  if(assinatura !== MODO_ETAPA){
+    MODO_ETAPA = assinatura;
+    if(MS.stage) MS.stage.setOptions(opcoesDeEtapa());
+  }
+}
+
+/**
+ * Etapas que o filtro deve oferecer: as presentes nos dados, na ordem do funil.
+ *
+ * Considera o filtro de pipeline, mas nenhum outro: com o Funil Oficial
+ * escolhido a lista traz as etapas dele, e não as dos outros 18. Os demais
+ * filtros (período, tag, origem) ficam de fora de propósito — o dropdown
+ * mudando de conteúdo a cada ajuste de data seria desconcertante.
+ */
+function opcoesDeEtapa(){
+  const pipesSel = MS.pipeline ? MS.pipeline.getValues() : null;
+  const linhas = (pipesSel && pipesSel.size)
+    ? RAW.filter(r => pipesSel.has(r.pipeline))
+    : RAW;
+
+  const presentes = new Set(linhas.map(r => r.stageView).filter(Boolean));
+  const ordenadas = [...STAGE_ORDER, ...FORA_DO_FUNIL].filter(s => presentes.has(s));
+  for(const s of presentes) if(!ordenadas.includes(s)) ordenadas.push(s);
+  return ordenadas;
 }
 
 const SOURCE_ORDER = ['Anúncio','Formulário','Orgânico'];
@@ -658,15 +958,20 @@ const SOURCE_ICON  = { 'Anúncio':'◆', 'Formulário':'◉', 'Orgânico':'◈' 
 
 /* Classify origem based on medium + campaign
    - medium vazio       => Orgânico (Manychat)
-   - medium social*     => Orgânico (link da bio)
+   - medium social*     => Orgânico (link da bio) — exceto se a campanha for [FORMS]
+   - medium dm          => Orgânico (Manychat) — exceto se a campanha for [FORMS]
+   - medium organico    => Orgânico
    - qualquer outro     => Ads -> se campaign contém [FORMS] = Formulário (FB Lead Ads), senão Anúncio (LP)
    Prefer last_atribution_medium; fallback first_atribution_medium */
 function classifySource(lastMed, firstMed, lastCamp, firstCamp){
   const med = (lastMed && String(lastMed).trim()) || (firstMed && String(firstMed).trim()) || '';
   if(!med) return 'Orgânico';
-  if(/social/i.test(med)) return 'Orgânico';
-  const camp = ((lastCamp && String(lastCamp)) || (firstCamp && String(firstCamp)) || '').toUpperCase();
-  if(camp.includes('[FORMS]') || camp.includes('FORMS')) return 'Formulário';
+  const campU = [lastCamp, firstCamp].filter(Boolean).map(String).join(' | ').toUpperCase();
+  const isForms = campU.includes('[FORMS]') || campU.includes('FORMS');
+  if(/social/i.test(med)) return isForms ? 'Formulário' : 'Orgânico';
+  if(/(^|[^a-z0-9])dm([^a-z0-9]|$)/i.test(med)) return isForms ? 'Formulário' : 'Orgânico';
+  if(/organic/i.test(med.normalize('NFD').replace(/[\u0300-\u036f]/g,''))) return 'Orgânico';
+  if(isForms) return 'Formulário';
   return 'Anúncio';
 }
 
@@ -678,6 +983,10 @@ const fmtBRLshort = v => {
   return fmtBRL(v);
 };
 const fmtNum = v => (v||0).toLocaleString('pt-BR');
+const fmt1 = v => (v||0).toFixed(1).replace('.',',');
+const pctStr = (a,b) => b ? fmt1(a/b*100)+'%' : '';
+const costStr = (v,inv) => !inv ? '<span class="dim">—</span>' : (v===Infinity ? '<span class="trap">∞</span>' : fmtBRL(v));
+const costStrB = (x,v) => (!x || !x.invest) ? '—' : (v===Infinity ? '∞' : fmtBRL(v));
 
 /* =========================================================
    DATA STATE
@@ -685,6 +994,7 @@ const fmtNum = v => (v||0).toLocaleString('pt-BR');
 let RAW = [];
 let SPEND_RAW = []; // [{campaign, valor, ym:'YYYY-MM', dt:Date}]
 let CMP_ON = false; // comparar períodos A/B
+let VERT = '';      // '' | 'Rio Preto' | 'Diagnóstico'
 let charts = {};
 
 /* =========================================================
@@ -712,6 +1022,58 @@ function parseDate(s){
   const d = new Date(s);
   return isNaN(d) ? null : d;
 }
+/* Data + hora (usada nas reuniões). Aceita ISO, AAAA-MM-DD [HH:MM] e DD/MM/AAAA [HH:MM]. */
+function parseDateTime(s){
+  if(!s) return null;
+  s = String(s).trim();
+  if(!s) return null;
+  if(/^\d{4}-\d{2}-\d{2}T/.test(s)){ const d = new Date(s); return isNaN(d) ? null : d; }
+  let m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[ T](\d{1,2}):(\d{2}))?/);
+  if(m) return new Date(+m[1], +m[2]-1, +m[3], m[4]?+m[4]:0, m[5]?+m[5]:0);
+  m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})(?:[ ,]+(\d{1,2}):(\d{2}))?/);
+  if(m) return new Date(+m[3], +m[2]-1, +m[1], m[4]?+m[4]:0, m[5]?+m[5]:0);
+  const d = new Date(s);
+  return isNaN(d) ? null : d;
+}
+
+/* =========================================================
+   REUNIÕES — agendada / realizada a partir da data marcada
+========================================================= */
+/* Lido a cada chamada, e não uma vez no carregamento: STAGE_ORDER agora é
+   recalculado conforme o filtro de pipeline. */
+function meetInfo(r){
+  const apresIdx = STAGE_ORDER.indexOf('Apresentação Agendada');
+  const idx = STAGE_ORDER.indexOf(r.stageView);
+  const advanced = idx !== -1 && apresIdx !== -1 && idx > apresIdx; // passou da apresentação
+  const atApres  = idx !== -1 && idx === apresIdx;
+  const booked = !!r.meetDt || advanced || atApres;
+  if(!booked) return { booked:false, held:false, status:'', dt:null };
+  const now = new Date();
+  let held, status;
+  if(r.meetDt){
+    held = r.meetDt <= now || advanced;
+    status = r.meetDt <= now ? 'realizada' : 'futura';
+  } else {
+    held = advanced;
+    status = advanced ? 'realizada' : 'sem-data';
+  }
+  return { booked:true, held, status, dt:r.meetDt };
+}
+function meetCounts(rows){
+  let agend=0, realiz=0, futura=0, semData=0, vendas=0;
+  let next=null;
+  for(const r of rows){
+    const mi = meetInfo(r);
+    if(!mi.booked) continue;
+    agend++;
+    if(mi.held) realiz++;
+    if(mi.status==='futura'){ futura++; if(!next || mi.dt < next) next = mi.dt; }
+    if(mi.status==='sem-data') semData++;
+    if(r.stageView === 'Venda') vendas++;
+  }
+  return { agend, realiz, futura, semData, vendas, next };
+}
+
 function parseValor(v){
   if(v===null||v===undefined||v==='') return 0;
   if(typeof v === 'number') return v;
@@ -722,22 +1084,6 @@ function parseValor(v){
   const n = parseFloat(s);
   return isNaN(n) ? 0 : n;
 }
-/* ATIVO / INATIVO do anúncio — lê a coluna de status da aba gasto_campanha.
-   Aceita as variações mais comuns de escrita/idioma; devolve '' quando a
-   planilha não informa nada para aquela linha. */
-function normAdStatus(v){
-  if(v===null || v===undefined) return '';
-  const s = String(v).trim();
-  if(!s) return '';
-  const u = s.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ');
-  if(/^(ATIVO|ATIVA|ATIVOS|ATIVAS|ACTIVE|ENABLED|EM VEICULACAO|VEICULANDO|RODANDO|LIGADO|ON|SIM|S|TRUE|VERDADEIRO|1)$/.test(u)) return 'ATIVO';
-  if(/^(INATIVO|INATIVA|INATIVOS|INATIVAS|INACTIVE|PAUSADO|PAUSADA|PAUSED|DESATIVADO|DESATIVADA|DESLIGADO|ARQUIVADO|ARCHIVED|DISABLED|OFF|NAO|N|FALSE|FALSO|0|ENCERRADO|FINALIZADO|EXCLUIDO|DELETADO|DELETED)$/.test(u)) return 'INATIVO';
-  // fallback por palavra-chave (ex.: "Ativo - veiculando", "Pausado pelo anunciante")
-  if(u.includes('INATIV') || u.includes('PAUS') || u.includes('DESATIV') || u.includes('ARQUIV') || u.includes('ENCERR') || u.includes('DESLIG')) return 'INATIVO';
-  if(u.includes('ATIV') || u.includes('VEICUL')) return 'ATIVO';
-  return '';
-}
-
 function normTag(t){
   if(!t) return '';
   const u = String(t).toUpperCase().replace(/\s+/g,'');
@@ -760,11 +1106,95 @@ function loadCsv(url, optional){
   });
 }
 
+/* =========================================================
+   ACESSO — a senha é conferida no Worker, não aqui.
+   Esta página só guarda a chave e a manda no header; sem a chave
+   certa o Worker devolve 401 e nenhum dado sai do CRM.
+========================================================= */
+const AUTH_KEY_STORAGE = 'tatsuo_dash_key';
+let SNAPSHOT_META = null;
+
+function getKey(){
+  try { return localStorage.getItem(AUTH_KEY_STORAGE) || ''; } catch(_) { return ''; }
+}
+function setKey(v){
+  try { v ? localStorage.setItem(AUTH_KEY_STORAGE, v) : localStorage.removeItem(AUTH_KEY_STORAGE); } catch(_){}
+}
+
+/* Mostra a tela de senha e resolve quando o usuário envia uma.
+   O timer de ocultação precisa ser cancelado a cada chamada: numa senha
+   errada o 401 volta em milissegundos e a tela reabre antes do timer
+   anterior disparar — sem o clearTimeout ele apagaria a tela recém-aberta
+   e o usuário ficaria olhando um dashboard vazio. */
+let authHideTimer = null;
+function askKey(msg){
+  return new Promise(resolve => {
+    const veil  = document.getElementById('auth-veil');
+    const form  = document.getElementById('auth-form');
+    const input = document.getElementById('auth-input');
+
+    if(authHideTimer){ clearTimeout(authHideTimer); authHideTimer = null; }
+
+    document.getElementById('auth-msg').textContent = msg || '';
+    document.getElementById('veil').classList.add('hide');
+    veil.style.display = 'flex';
+    requestAnimationFrame(() => veil.classList.remove('hide'));
+    input.value = '';
+    input.focus();
+
+    form.onsubmit = (e) => {
+      e.preventDefault();
+      const v = input.value.trim();
+      if(!v){
+        document.getElementById('auth-msg').textContent = 'Digite a senha.';
+        return;
+      }
+      form.onsubmit = null;
+      veil.classList.add('hide');
+      authHideTimer = setTimeout(() => {
+        veil.style.display = 'none';
+        authHideTimer = null;
+      }, 400);
+      document.getElementById('veil').classList.remove('hide');
+      resolve(v);
+    };
+  });
+}
+
+/* Busca as linhas no Worker, pedindo a senha quantas vezes for preciso. */
+async function loadLeads(){
+  let key = getKey();
+  for(let tentativa = 0; tentativa < 4; tentativa++){
+    if(!key) key = await askKey(tentativa ? 'Senha incorreta.' : '');
+
+    const res = await fetch(API_URL, { headers: { 'X-Dash-Key': key } });
+
+    if(res.status === 401){
+      setKey('');
+      key = '';
+      continue;
+    }
+    if(!res.ok){
+      throw new Error('O servidor de dados respondeu ' + res.status + '.');
+    }
+
+    const json = await res.json();
+    setKey(key);
+    SNAPSHOT_META = { generatedAt: json.generatedAt, stale: !!json.stale, counts: json.counts };
+    // estrutura dos pipelines: é dela que sai a ordem e a composição do funil
+    PIPELINES = Array.isArray(json.pipelines) ? json.pipelines : [];
+    if(!Array.isArray(json.rows)) throw new Error('Resposta do servidor sem a lista de linhas.');
+    return json.rows;
+  }
+  throw new Error('Senha incorreta. Recarregue a página para tentar de novo.');
+}
+
 function loadData(){
-  Promise.all([ loadCsv(CSV_URL, false), loadCsv(SPEND_CSV_URL, true) ])
+  const leadsPromise = USE_CSV ? loadCsv(CSV_URL, false) : loadLeads();
+  Promise.all([ leadsPromise, loadCsv(SPEND_CSV_URL, true) ])
   .then(([leadsData, spendData]) => {
     try{
-      if(!leadsData || !leadsData.length) throw new Error('A planilha não retornou linhas.');
+      if(!leadsData || !leadsData.length) throw new Error(USE_CSV ? 'A planilha não retornou linhas.' : 'O CRM não retornou nenhuma oportunidade.');
       // ---- SPEND ----
       SPEND_RAW = (spendData||[]).map(r => {
         const camp = (r.campanha || r.Campanha || r.CAMPANHA || r['CAMPANHA'] || '').trim();
@@ -779,13 +1209,13 @@ function loadData(){
         const anuncio = (r.anuncio || r.Anuncio || r['anúncio'] || r.criativo || '').trim();
         const adId    = (r.id_anuncio || r.ID_anuncio || '').trim();
         // status do anúncio (ATIVO / INATIVO) — coluna opcional da aba gasto_campanha
-        const status  = normAdStatus(
-          r.status || r.Status || r.STATUS || r.situacao || r.Situacao || r['situação'] || r['Situação'] ||
+        const statusRaw = r.status || r.Status || r.STATUS || r.situacao || r.Situacao || r['situação'] || r['Situação'] ||
           r.ativo || r.Ativo || r.ATIVO || r.status_anuncio || r['status_anúncio'] || r['status anuncio'] ||
           r['status do anuncio'] || r['Status do anúncio'] || r.veiculacao || r['veiculação'] ||
-          r.delivery || r.effective_status || r.ad_status || ''
-        );
-        return { campaign: camp, valor: val, ym, dt, day, anuncio, adId, status };
+          r.delivery || r.effective_status || r.ad_status || '';
+        const status  = normAdStatus(statusRaw);
+        const effSt   = String(r.effective_status || statusRaw || '').trim();
+        return { campaign: camp, valor: val, ym, dt, day, anuncio, adId, status, effSt };
       }).filter(s => s.campaign && s.dt);
       buildStatusIndex();
       // diagnóstico no console pra ajudar quando algo não cruza
@@ -797,12 +1227,6 @@ function loadData(){
           console.log('[gasto_campanha] meses:', months.join(', '));
           console.log('[gasto_campanha] campanhas:', [...new Set(SPEND_RAW.map(s=>s.campaign))]);
           console.log('[gasto_campanha] anúncios:', [...new Set(SPEND_RAW.map(s=>s.anuncio).filter(Boolean))]);
-          const semStatus = SPEND_RAW.filter(s=>!s.status).length;
-          if(semStatus === SPEND_RAW.length){
-            console.warn('[gasto_campanha] nenhuma linha tem coluna de status — a coluna "Status" da tabela de criativos vai aparecer como "—". Crie uma coluna chamada "status" com ATIVO / INATIVO.');
-          } else if(semStatus){
-            console.warn('[gasto_campanha] linhas sem status preenchido:', semStatus);
-          }
         } else if(spendData && spendData.length){
           console.warn('[gasto_campanha] aba retornou linhas mas nenhuma pôde ser parseada. Cabeçalhos lidos:', Object.keys(spendData[0]||{}));
         } else {
@@ -822,6 +1246,8 @@ function loadData(){
             if(['MQL','Q-MQL','N-MQL'].includes(n)) { tag = n; break; }
           }
           if(!tag && tagTokens[0]) tag = normTag(tagTokens[0]);
+          let tier = '';
+          for(const t of tagTokens){ const n = normTier(t); if(n){ tier = n; break; } }
           const firstMed  = r.first_atribution_medium || '';
           const lastMed   = r.last_atribution_medium  || '';
           const firstCamp = r.first_atribution_campaign || '';
@@ -834,6 +1260,10 @@ function loadData(){
             }
             return '';
           };
+          if(!tier) tier = normTier(pick('perfil_do_lead','perfil_lead','perfil_contato','classificacao','classificação','nivel','nível','qualidade'));
+          const vertical = detectVertical(tagRaw, r.nome_pipeline||'', firstCamp, lastCamp, pick('produto'));
+          const meetSched = parseDateTime(pick('data_do_agendamento'));
+          const meetDone  = parseDateTime(pick('data_da_reuniao'));
           return {
             id: r.id_contato,
             nome: pick('nome_lead','nome_oportunidade','nome_contato','Nome','nome'),
@@ -843,6 +1273,12 @@ function loadData(){
             funcionarios: pick('nro_funcionarios','n_funcionarios','numero_funcionarios','funcionarios','qtd_funcionarios','quantidade_funcionarios'),
             conteudo: pick('last_atribution_content','first_atribution_content','conteudo','Conteúdo','content'),
             tag,
+            tier,
+            vertical,
+            meetSched,
+            meetDone,
+            meetDt: meetDone || meetSched,
+            closer: pick('closer'),
             tagsRaw: tagRaw,
             stage: normStage(r.estagio_pipeline||''),
             pipeline: (r.nome_pipeline || r.pipeline || r.Pipeline || '').trim(),
@@ -856,10 +1292,18 @@ function loadData(){
           };
         });
       }
+      try{
+        const tiers = {}; for(const r of RAW){ if(r.tier) tiers[r.tier]=(tiers[r.tier]||0)+1; }
+        const verts = {}; for(const r of RAW){ if(r.vertical) verts[r.vertical]=(verts[r.vertical]||0)+1; }
+        const withMeet = RAW.filter(r=>r.meetDt).length;
+        console.log('[classificação ouro/prata/bronze]', Object.keys(tiers).length ? tiers : 'nenhuma encontrada nas tags nem em perfil_do_lead');
+        console.log('[vertical]', Object.keys(verts).length ? verts : 'nenhuma tag de Rio Preto / Diagnóstico encontrada');
+        console.log('[reuniões] leads com data de reunião/agendamento:', withMeet);
+      }catch(_){}
       bootstrap();
     }catch(e){ showError(e.message); }
   })
-  .catch(err => showError((err && err.message) || 'Falha ao baixar o CSV.'));
+  .catch(err => showError((err && err.message) || 'Falha ao carregar os dados.'));
 }
 
 function showError(msg){
@@ -876,29 +1320,33 @@ function showError(msg){
 const MS = {}; // multi-select instances, keyed by short name
 
 function bootstrap(){
+  // as etapas precisam existir antes de montar o filtro de estágio, que as
+  // ordena por STAGE_ORDER
+  atualizarEtapas();
   const camps = [...new Set(RAW.map(r=>r.campaign).filter(Boolean))].sort();
-  const stages = [...new Set(RAW.map(r=>r.stage).filter(Boolean))].sort((a,b)=>{
-    const ia = STAGE_ORDER.indexOf(a), ib = STAGE_ORDER.indexOf(b);
-    if(ia!==-1 && ib!==-1) return ia-ib;
-    if(ia!==-1) return -1;
-    if(ib!==-1) return 1;
-    return a.localeCompare(b);
-  });
+  const stages = opcoesDeEtapa();
   const sources = [...new Set(RAW.map(r=>r.source).filter(Boolean))].sort();
   const pipelines = [...new Set(RAW.map(r=>r.pipeline).filter(Boolean))].sort();
 
   MS.pipeline = new MultiSelect(document.getElementById('f-pipeline'), { allLabel:'Todos os pipelines', options:pipelines, onChange:render });
   MS.camp     = new MultiSelect(document.getElementById('f-camp'),     { allLabel:'Todas as campanhas', options:camps, onChange:render });
   MS.tag      = new MultiSelect(document.getElementById('f-tag'),      { allLabel:'Todas as tags', options:['MQL','Q-MQL','N-MQL'], onChange:render });
+  const tiersFound = TIER_ORDER.filter(t => RAW.some(r => r.tier === t));
+  if(tiersFound.length){
+    MS.tier = new MultiSelect(document.getElementById('f-tier'), { allLabel:'Ouro, prata e bronze', options:tiersFound, onChange:render });
+  } else {
+    document.getElementById('field-tier').style.display = 'none';
+  }
+  const vertsFound = VERT_ORDER.filter(v => RAW.some(r => r.vertical === v));
+  if(vertsFound.length){
+    MS.vert = new MultiSelect(document.getElementById('f-vert'), { allLabel:'Todas as verticais', options:vertsFound, onChange:render });
+  } else {
+    document.getElementById('field-vert').style.display = 'none';
+  }
   MS.stage    = new MultiSelect(document.getElementById('f-stage'),    { allLabel:'Todos os estágios', options:stages, onChange:render });
   MS.source   = new MultiSelect(document.getElementById('f-source'),   { allLabel:'Todas as origens', options:sources, onChange:render });
-  // inclui anúncios que só existem na aba gasto_campanha (criativos sem lead)
-  const creatives = [...new Set([
-    ...RAW.map(r => (r.conteudo||'').trim()),
-    ...SPEND_RAW.map(s => (s.anuncio||'').trim()),
-  ].filter(Boolean))].sort();
+  const creatives = [...new Set(RAW.map(r=> (r.conteudo||'').trim()).filter(Boolean))].sort();
   MS.creative = new MultiSelect(document.getElementById('f-creative'),  { allLabel:'Todos os criativos', options:creatives, onChange:render });
-  // filtro de status do criativo — vale só para o bloco de criativos
   MS.adstatus = new MultiSelect(document.getElementById('f-adstatus'), {
     allLabel:'Todos os status',
     options: AD_STATUS_OPTIONS,
@@ -920,6 +1368,8 @@ function bootstrap(){
     document.getElementById(id).addEventListener('change', render));
   document.getElementById('clear-btn').addEventListener('click', ()=>{
     MS.camp.clear(); MS.tag.clear(); MS.stage.clear(); MS.source.clear(); MS.pipeline.clear(); MS.creative.clear();
+    if(MS.tier) MS.tier.clear();
+    if(MS.vert) MS.vert.clear();
     if(MS.adstatus) MS.adstatus.clear();
     if(dates.length){
       document.getElementById('f-start').value = dates[0].toISOString().slice(0,10);
@@ -928,10 +1378,15 @@ function bootstrap(){
     render();
   });
 
-  // meta
-  const now = new Date();
+  // meta — hora em que o CRM foi lido, não a hora em que a página abriu
+  const syncAt = (SNAPSHOT_META && SNAPSHOT_META.generatedAt)
+    ? new Date(SNAPSHOT_META.generatedAt)
+    : new Date();
+  const mins = Math.round((Date.now() - syncAt.getTime()) / 60000);
+  const idade = mins < 1 ? 'agora' : (mins < 60 ? 'há ' + mins + ' min' : 'há ' + Math.round(mins/60) + 'h');
   document.getElementById('meta-time').textContent =
-    'Atualizado ' + now.toLocaleDateString('pt-BR') + ' • ' + now.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    'Atualizado ' + syncAt.toLocaleDateString('pt-BR') + ' • ' +
+    syncAt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) + ' (' + idade + ')';
 
   wireTablePager();
   wireCreativesSort();
@@ -958,7 +1413,23 @@ function getFilters(period){
     source:  MS.source   ? MS.source.getValues()   : new Set(),
     creative:MS.creative ? MS.creative.getValues() : new Set(),
     pipeline:MS.pipeline ? MS.pipeline.getValues() : new Set(),
+    tier:    MS.tier     ? MS.tier.getValues()     : new Set(),
+    vert:    MS.vert     ? MS.vert.getValues()     : new Set(),
   };
+}
+/* campanhas que pertencem às verticais selecionadas (para recortar o gasto) */
+let _vertCampCache = null;
+function vertCampaigns(sel){
+  if(!sel || !sel.size) return null;
+  if(!_vertCampCache){
+    _vertCampCache = {};
+    for(const vv of VERT_ORDER) _vertCampCache[vv] = new Set();
+    for(const r of RAW){ if(r.vertical && r.campaign && _vertCampCache[r.vertical]) _vertCampCache[r.vertical].add(r.campaign); }
+    for(const s of SPEND_RAW){ const d = detectVertical(s.campaign, s.anuncio); if(d && _vertCampCache[d]) _vertCampCache[d].add(s.campaign); }
+  }
+  const out = new Set();
+  for(const v of sel){ const set = _vertCampCache[v]; if(set) for(const c of set) out.add(c); }
+  return out.size ? out : null;
 }
 function getFiltered(period){
   const f = getFilters(period);
@@ -969,10 +1440,12 @@ function getFiltered(period){
     if(f.end   && !r.dt) return false;
     if(f.camp.size     && !f.camp.has(r.campaign)) return false;
     if(f.tag.size      && !f.tag.has(r.tag))       return false;
-    if(f.stage.size    && !f.stage.has(r.stage))   return false;
+    if(f.stage.size    && !f.stage.has(r.stageView)) return false;
     if(f.source.size   && !f.source.has(r.source)) return false;
     if(f.creative.size && !f.creative.has((r.conteudo||'').trim())) return false;
     if(f.pipeline.size && !f.pipeline.has(r.pipeline)) return false;
+    if(f.tier.size && !f.tier.has(r.tier)) return false;
+    if(f.vert.size && !f.vert.has(r.vertical)) return false;
     return true;
   });
 }
@@ -997,8 +1470,59 @@ function getFilteredSpend(period){
       }
     }
     if(f.camp.size && !f.camp.has(s.campaign)) return false;
+    if(f.vert.size){ const set = vertCampaigns(f.vert); if(set && !set.has(s.campaign)) return false; }
     return true;
   });
+}
+
+/* ATIVO / INATIVO do anúncio — lê a coluna de status da aba gasto_campanha. */
+function normAdStatus(v){
+  if(v===null || v===undefined) return '';
+  const s = String(v).trim();
+  if(!s) return '';
+  const u = s.toUpperCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ');
+  if(/^(ATIVO|ATIVA|ATIVOS|ATIVAS|ACTIVE|ENABLED|EM VEICULACAO|VEICULANDO|RODANDO|LIGADO|ON|SIM|S|TRUE|VERDADEIRO|1)$/.test(u)) return 'ATIVO';
+  if(/^(INATIVO|INATIVA|INATIVOS|INATIVAS|INACTIVE|PAUSADO|PAUSADA|PAUSED|DESATIVADO|DESATIVADA|DESLIGADO|ARQUIVADO|ARCHIVED|DISABLED|OFF|NAO|N|FALSE|FALSO|0|ENCERRADO|FINALIZADO|EXCLUIDO|DELETADO|DELETED)$/.test(u)) return 'INATIVO';
+  if(u.includes('INATIV') || u.includes('PAUS') || u.includes('DESATIV') || u.includes('ARQUIV') || u.includes('ENCERR') || u.includes('DESLIG')) return 'INATIVO';
+  if(u.includes('ATIV') || u.includes('VEICUL')) return 'ATIVO';
+  return '';
+}
+
+/* Índice de status: usa sempre a linha MAIS RECENTE de cada anúncio. */
+let AD_STATUS = {}, AD_STATUS_NAME = {}, CAMP_STATUS = {};
+function buildStatusIndex(){
+  AD_STATUS = {}; AD_STATUS_NAME = {}; CAMP_STATUS = {};
+  const campOnly = {};
+  for(const s of SPEND_RAW){
+    if(!s.status) continue;
+    const t = s.dt ? s.dt.getTime() : 0;
+    if(s.anuncio){
+      const k = s.campaign + '||' + s.anuncio;
+      if(!AD_STATUS[k] || t >= AD_STATUS[k].t) AD_STATUS[k] = { t, v:s.status, campaign:s.campaign };
+      if(!AD_STATUS_NAME[s.anuncio] || t >= AD_STATUS_NAME[s.anuncio].t) AD_STATUS_NAME[s.anuncio] = { t, v:s.status };
+    } else {
+      if(!campOnly[s.campaign] || t >= campOnly[s.campaign].t) campOnly[s.campaign] = { t, v:s.status };
+    }
+  }
+  for(const k in AD_STATUS){
+    const e = AD_STATUS[k];
+    if(e.v === 'ATIVO') CAMP_STATUS[e.campaign] = 'ATIVO';
+    else if(!CAMP_STATUS[e.campaign]) CAMP_STATUS[e.campaign] = 'INATIVO';
+  }
+  for(const c in campOnly) if(!CAMP_STATUS[c]) CAMP_STATUS[c] = campOnly[c].v;
+}
+function adStatus(campaign, anuncio){
+  const k = (campaign||'') + '||' + (anuncio||'');
+  if(AD_STATUS[k]) return AD_STATUS[k].v;
+  if(AD_STATUS_NAME[anuncio]) return AD_STATUS_NAME[anuncio].v;
+  return '';
+}
+const AD_STATUS_OPTIONS = ['ATIVO','INATIVO','Sem status'];
+function statusLabel(v){ return v || 'Sem status'; }
+function filterByAdStatus(list){
+  const sel = MS.adstatus ? MS.adstatus.getValues() : new Set();
+  if(!sel.size) return list;
+  return list.filter(m => sel.has(statusLabel(m.status)));
 }
 
 function totalSpend(spendRows){
@@ -1018,6 +1542,7 @@ function spendByTag(){
     if(f.end   && !r.dt) return false;
     if(f.camp.size     && !f.camp.has(r.campaign)) return false;
     if(f.pipeline.size && !f.pipeline.has(r.pipeline)) return false;
+    if(f.vert.size && !f.vert.has(r.vertical)) return false;
     return true;
   });
   // contagem (campaign -> {tag: n, _total: n})
@@ -1054,11 +1579,13 @@ function spendByTag(){
 ========================================================= */
 function render(){
   TABLE_PAGE = 1; // qualquer mudança de filtro reseta para página 1
+  // o funil depende de quais pipelines estão filtrados, então é recalculado
+  // antes de desenhar qualquer coisa
+  atualizarEtapas();
   const data = getFiltered();
   const dataB = CMP_ON ? getFiltered('B') : null;
   renderSummary(data, dataB);
   renderKPIs(data, dataB);
-  renderTagsChart(data, dataB);
   renderOriginSummary(data, dataB);
   renderPipelineChart(data, dataB);
   renderFunnel(data, dataB);
@@ -1073,60 +1600,6 @@ let CREATIVE_SORT = { key:'leads', dir:-1 };
 let CREATIVE_FILTER = null;
 let CREATIVE_LEVEL = 'creative'; // 'creative' | 'campaign' — toggle de nível
 
-/* ---------------------------------------------------------
-   STATUS DO ANÚNCIO (ATIVO / INATIVO)
-   Lido da coluna `status` da aba gasto_campanha. Usa sempre a linha
-   MAIS RECENTE de cada anúncio — o status é o estado atual da conta,
-   não muda conforme o período filtrado.
---------------------------------------------------------- */
-let AD_STATUS = {};       // 'campanha||anuncio' -> { t, v, campaign }
-let AD_STATUS_NAME = {};  // 'anuncio'           -> { t, v }
-let CAMP_STATUS = {};     // 'campanha'          -> 'ATIVO' | 'INATIVO'
-
-function buildStatusIndex(){
-  AD_STATUS = {}; AD_STATUS_NAME = {}; CAMP_STATUS = {};
-  const campOnly = {};
-  for(const s of SPEND_RAW){
-    if(!s.status) continue;
-    const t = s.dt ? s.dt.getTime() : 0;
-    if(s.anuncio){
-      const k = s.campaign + '||' + s.anuncio;
-      if(!AD_STATUS[k] || t >= AD_STATUS[k].t) AD_STATUS[k] = { t, v:s.status, campaign:s.campaign };
-      if(!AD_STATUS_NAME[s.anuncio] || t >= AD_STATUS_NAME[s.anuncio].t) AD_STATUS_NAME[s.anuncio] = { t, v:s.status };
-    } else {
-      if(!campOnly[s.campaign] || t >= campOnly[s.campaign].t) campOnly[s.campaign] = { t, v:s.status };
-    }
-  }
-  // campanha é ATIVA quando tem ao menos um anúncio ativo
-  for(const k in AD_STATUS){
-    const e = AD_STATUS[k];
-    if(e.v === 'ATIVO') CAMP_STATUS[e.campaign] = 'ATIVO';
-    else if(!CAMP_STATUS[e.campaign]) CAMP_STATUS[e.campaign] = 'INATIVO';
-  }
-  for(const c in campOnly) if(!CAMP_STATUS[c]) CAMP_STATUS[c] = campOnly[c].v;
-}
-
-function adStatus(campaign, anuncio){
-  const k = (campaign||'') + '||' + (anuncio||'');
-  if(AD_STATUS[k]) return AD_STATUS[k].v;                       // match exato campanha + anúncio
-  if(AD_STATUS_NAME[anuncio]) return AD_STATUS_NAME[anuncio].v; // fallback só pelo nome do anúncio
-  return '';
-}
-
-/* Filtro de status do bloco de criativos (ATIVO / INATIVO / Sem status).
-   Nada selecionado = mostra tudo, igual aos filtros do topo. */
-const AD_STATUS_OPTIONS = ['ATIVO','INATIVO','Sem status'];
-function statusLabel(v){ return v || 'Sem status'; }
-function filterByAdStatus(list){
-  const sel = MS.adstatus ? MS.adstatus.getValues() : new Set();
-  if(!sel.size) return list;
-  return list.filter(m => sel.has(statusLabel(m.status)));
-}
-
-function newCreativeRow(key, creative, campaign){
-  return { key, creative, campaign, leads:0, mql:0, qmql:0, nmql:0, apres:0, vendas:0, byCamp:{} };
-}
-
 function creativeStats(data, period){
   const byCampaign = CREATIVE_LEVEL === 'campaign';
   const map = {};
@@ -1135,15 +1608,19 @@ function creativeStats(data, period){
     const camp = (r.campaign||'').trim() || '(sem campanha)';
     const cria = (r.conteudo||'').trim() || '(sem criativo)';
     const key = byCampaign ? camp : (camp + '||' + cria);
-    if(!map[key]) map[key] = newCreativeRow(key, byCampaign ? camp : cria, byCampaign ? '' : camp);
+    if(!map[key]) map[key] = { key, creative: byCampaign ? camp : cria, campaign: byCampaign ? '' : camp, leads:0, mql:0, qmql:0, nmql:0, apres:0, agend:0, realiz:0, vendas:0, tiers:{'MQL':{},'Q-MQL':{},'N-MQL':{}}, byCamp:{} };
     const m = map[key];
     m.leads++;
+    if(r.tier && m.tiers[r.tag]) m.tiers[r.tag][r.tier] = (m.tiers[r.tag][r.tier]||0) + 1;
+    const mi = meetInfo(r);
+    if(mi.booked) m.agend++;
+    if(mi.held) m.realiz++;
     if(r.tag==='MQL') m.mql++;
     else if(r.tag==='Q-MQL') m.qmql++;
     else if(r.tag==='N-MQL') m.nmql++;
-    const idx = STAGE_ORDER.indexOf(r.stage);
+    const idx = STAGE_ORDER.indexOf(r.stageView);
     if(idx !== -1 && APRES_IDX !== -1 && idx >= APRES_IDX) m.apres++;
-    if(r.stage === 'Venda') m.vendas++;
+    if(r.stageView === 'Venda') m.vendas++;
     if(r.campaign) m.byCamp[r.campaign] = (m.byCamp[r.campaign]||0) + 1;
   }
   // ---- GASTO ----
@@ -1152,20 +1629,15 @@ function creativeStats(data, period){
   // 2º fallback: linhas de gasto SEM anúncio são rateadas por campanha
   //     proporcionalmente aos leads de cada criativo.
   const fSpend = getFilteredSpend(period);
-  const fCreative = MS.creative ? MS.creative.getValues() : new Set();
-  const spendAd = {};        // campanha||anúncio -> valor
-  const spendAdMeta = {};    // campanha||anúncio -> {campaign, anuncio}
-  const spendAdOnly = {};    // anúncio -> {valor, camps:Set, keys:Set} (fallback p/ nome de campanha divergente)
+  const spendAd = {};        // campanha||anúncio
+  const spendAdOnly = {};    // anúncio -> {valor, camps:Set} (fallback p/ nome de campanha divergente)
   const spendCampNoAd = {};
   for(const s of fSpend){
     if(s.anuncio){
-      const k = s.campaign + '||' + s.anuncio;
-      spendAd[k] = (spendAd[k]||0) + s.valor;
-      spendAdMeta[k] = { campaign: s.campaign, anuncio: s.anuncio };
-      if(!spendAdOnly[s.anuncio]) spendAdOnly[s.anuncio] = { valor:0, camps:new Set(), keys:new Set() };
+      spendAd[s.campaign + '||' + s.anuncio] = (spendAd[s.campaign + '||' + s.anuncio]||0) + s.valor;
+      if(!spendAdOnly[s.anuncio]) spendAdOnly[s.anuncio] = { valor:0, camps:new Set() };
       spendAdOnly[s.anuncio].valor += s.valor;
       spendAdOnly[s.anuncio].camps.add(s.campaign);
-      spendAdOnly[s.anuncio].keys.add(k);
     }
     else spendCampNoAd[s.campaign] = (spendCampNoAd[s.campaign]||0) + s.valor;
   }
@@ -1176,12 +1648,6 @@ function creativeStats(data, period){
     // gasto total por campanha = linhas com e sem anúncio
     const spendCampAll = {};
     for(const s of fSpend) spendCampAll[s.campaign] = (spendCampAll[s.campaign]||0) + s.valor;
-    // toda campanha com gasto no período entra na tabela, mesmo sem nenhum lead
-    for(const c in spendCampAll){
-      if(map[c]) continue;
-      const m = newCreativeRow(c, c, '');
-      map[c] = m; list.push(m);
-    }
     for(const m of list){
       const inv = spendCampAll[m.creative] || 0;
       m.spendDirect = inv > 0;
@@ -1193,14 +1659,7 @@ function creativeStats(data, period){
     return filterByAdStatus(list);
   }
   // 1ª passada: match exato campanha+anúncio; marca anúncios já consumidos
-  const usedKeys = new Set();
-  for(const m of list){
-    m._inv = spendAd[m.key] || 0;
-    if(m._inv){
-      usedKeys.add(m.key);
-      if(spendAdOnly[m.creative]) spendAdOnly[m.creative].used = true;
-    }
-  }
+  for(const m of list){ m._inv = spendAd[m.key] || 0; if(m._inv && spendAdOnly[m.creative]) spendAdOnly[m.creative].used = true; }
   // 2ª passada (fallback): anúncio sem match exato de campanha → rateia por leads entre os homônimos sem match
   for(const cria in spendAdOnly){
     const e = spendAdOnly[cria];
@@ -1208,20 +1667,7 @@ function creativeStats(data, period){
     const cands = list.filter(m => m.creative === cria && !m._inv);
     const tot = cands.reduce((a,m)=>a+m.leads,0);
     if(!tot) continue;
-    e.used = true;
-    e.keys.forEach(k => usedKeys.add(k));
     for(const m of cands) m._inv = e.valor * (m.leads/tot);
-  }
-  // 3ª passada: anúncios com gasto no período que NÃO têm nenhum lead atribuído
-  // entram na tabela mesmo assim — a ideia é acompanhar TODOS os criativos,
-  // não só os que trouxeram lead.
-  for(const k in spendAd){
-    if(usedKeys.has(k) || map[k]) continue;
-    const meta = spendAdMeta[k];
-    if(fCreative.size && !fCreative.has(meta.anuncio)) continue;
-    const m = newCreativeRow(k, meta.anuncio, meta.campaign || '(sem campanha)');
-    m._inv = spendAd[k];
-    map[k] = m; list.push(m);
   }
   for(const m of list){
     let inv = m._inv || 0;
@@ -1246,6 +1692,12 @@ function finishCreativeMetrics(m, inv){
   m.apresPct = m.leads ? m.apres/m.leads*100 : 0;
   m.vendasPct = m.leads ? m.vendas/m.leads*100 : 0;
   m.convVenda = m.apres ? m.vendas/m.apres*100 : 0;
+  m.cpAgend = (inv > 0 && m.agend > 0) ? inv/m.agend : (inv > 0 ? Infinity : 0);
+  m.cpReal  = (inv > 0 && m.realiz > 0) ? inv/m.realiz : (inv > 0 ? Infinity : 0);
+  m.cpVenda = (inv > 0 && m.vendas > 0) ? inv/m.vendas : (inv > 0 ? Infinity : 0);
+  m.agendPct = m.leads ? m.agend/m.leads*100 : 0;
+  m.realizPct = m.agend ? m.realiz/m.agend*100 : 0;
+  m.convReal = m.realiz ? m.vendas/m.realiz*100 : 0;
 }
 
 /* Status Escalar / Observar / Matar por CPL qualificado vs meta */
@@ -1270,26 +1722,34 @@ function renderCreatives(data, dataB){
 function renderCreativeKPIs(list, listB){
   const el = document.getElementById('creative-kpis');
   if(!el) return;
-  const t = list.reduce((a,m)=>({invest:a.invest+m.invest, leads:a.leads+m.leads, mql:a.mql+m.mql, qual:a.qual+m.qualified, vendas:a.vendas+m.vendas}), {invest:0,leads:0,mql:0,qual:0,vendas:0});
+  const t = list.reduce((a,m)=>({invest:a.invest+m.invest, leads:a.leads+m.leads, mql:a.mql+m.mql, qual:a.qual+m.qualified, agend:a.agend+m.agend, realiz:a.realiz+m.realiz, vendas:a.vendas+m.vendas}), {invest:0,leads:0,mql:0,qual:0,agend:0,realiz:0,vendas:0});
   const spendTotal = totalSpend(getFilteredSpend());
-  const stSel = MS.adstatus ? MS.adstatus.getValues() : new Set();
-  const unattr = stSel.size ? 0 : Math.max(0, spendTotal - t.invest);
+  const unattr = Math.max(0, spendTotal - t.invest);
   const cpl = t.leads ? t.invest/t.leads : 0;
   const cplQ = t.qual ? t.invest/t.qual : 0;
   const cplM = t.mql ? t.invest/t.mql : 0;
   let B = null;
   if(listB){
-    const tb = listB.reduce((a,m)=>({invest:a.invest+m.invest, leads:a.leads+m.leads, mql:a.mql+m.mql, qual:a.qual+m.qualified, vendas:a.vendas+m.vendas}), {invest:0,leads:0,mql:0,qual:0,vendas:0});
-    B = { ...tb, cpl: tb.leads ? tb.invest/tb.leads : 0, cplQ: tb.qual ? tb.invest/tb.qual : 0, cplM: tb.mql ? tb.invest/tb.mql : 0 };
+    const tb = listB.reduce((a,m)=>({invest:a.invest+m.invest, leads:a.leads+m.leads, mql:a.mql+m.mql, qual:a.qual+m.qualified, agend:a.agend+m.agend, realiz:a.realiz+m.realiz, vendas:a.vendas+m.vendas}), {invest:0,leads:0,mql:0,qual:0,agend:0,realiz:0,vendas:0});
+    B = { ...tb, cpl: tb.leads ? tb.invest/tb.leads : 0, cplQ: tb.qual ? tb.invest/tb.qual : 0, cplM: tb.mql ? tb.invest/tb.mql : 0,
+      cpAg: tb.agend ? tb.invest/tb.agend : 0, cpRe: tb.realiz ? tb.invest/tb.realiz : 0, cpVd: tb.vendas ? tb.invest/tb.vendas : 0 };
   }
+  const cpAg = t.agend ? t.invest/t.agend : 0;
+  const cpRe = t.realiz ? t.invest/t.realiz : 0;
+  const cpVd = t.vendas ? t.invest/t.vendas : 0;
   const kpis = [
-    ['Investido', t.invest ? fmtBRLshort(t.invest) : '—', unattr > 1 ? '+ ' + fmtBRLshort(unattr) + ' não atribuído' : (stSel.size ? 'só ' + [...stSel].join(' + ') : ''), B ? `B: ${B.invest?fmtBRLshort(B.invest):'—'}${deltaHtml(t.invest, B.invest, false, true)}` : ''],
+    ['Investido', t.invest ? fmtBRLshort(t.invest) : '—', unattr > 1 ? '+ ' + fmtBRLshort(unattr) + ' não atribuído' : '', B ? `B: ${B.invest?fmtBRLshort(B.invest):'—'}${deltaHtml(t.invest, B.invest, false, true)}` : ''],
     ['Leads', fmtNum(t.leads), '', B ? `B: ${fmtNum(B.leads)}${deltaHtml(t.leads, B.leads, false)}` : ''],
     ['CPL', t.invest ? fmtBRL(cpl) : '—', 'custo por lead', B ? `B: ${B.invest?fmtBRL(B.cpl):'—'}${(t.invest&&B.invest)?deltaHtml(cpl, B.cpl, true):''}` : ''],
     ['Qualificados', fmtNum(t.qual), t.leads ? (t.qual/t.leads*100).toFixed(1).replace('.',',')+'% dos leads' : '', B ? `B: ${fmtNum(B.qual)}${deltaHtml(t.qual, B.qual, false)}` : ''],
     ['CPL qualificado', (t.invest && t.qual) ? fmtBRL(cplQ) : '—', 'o número que importa', B ? `B: ${(B.invest&&B.qual)?fmtBRL(B.cplQ):'—'}${(t.invest&&t.qual&&B.invest&&B.qual)?deltaHtml(cplQ, B.cplQ, true):''}` : ''],
     ['Custo / MQL', (t.invest && t.mql) ? fmtBRL(cplM) : '—', fmtNum(t.mql)+' MQL', B ? `B: ${(B.invest&&B.mql)?fmtBRL(B.cplM):'—'}${(t.invest&&t.mql&&B.invest&&B.mql)?deltaHtml(cplM, B.cplM, true):''}` : ''],
+    ['Reuniões agendadas', fmtNum(t.agend), t.leads ? pctStr(t.agend, t.leads)+' dos leads' : '', B ? `B: ${fmtNum(B.agend)}${deltaHtml(t.agend, B.agend, false)}` : ''],
+    ['Custo / reun. agend.', (t.invest && t.agend) ? fmtBRL(cpAg) : '—', '', B ? `B: ${(B.invest&&B.agend)?fmtBRL(B.cpAg):'—'}${(t.invest&&t.agend&&B.invest&&B.agend)?deltaHtml(cpAg, B.cpAg, true):''}` : ''],
+    ['Reuniões realizadas', fmtNum(t.realiz), t.agend ? pctStr(t.realiz, t.agend)+' das agendadas' : '', B ? `B: ${fmtNum(B.realiz)}${deltaHtml(t.realiz, B.realiz, false)}` : ''],
+    ['Custo / reun. realiz.', (t.invest && t.realiz) ? fmtBRL(cpRe) : '—', '', B ? `B: ${(B.invest&&B.realiz)?fmtBRL(B.cpRe):'—'}${(t.invest&&t.realiz&&B.invest&&B.realiz)?deltaHtml(cpRe, B.cpRe, true):''}` : ''],
     ['Vendas', fmtNum(t.vendas), '', B ? `B: ${fmtNum(B.vendas)}${deltaHtml(t.vendas, B.vendas, false)}` : ''],
+    ['Custo / venda', (t.invest && t.vendas) ? fmtBRL(cpVd) : '—', '', B ? `B: ${(B.invest&&B.vendas)?fmtBRL(B.cpVd):'—'}${(t.invest&&t.vendas&&B.invest&&B.vendas)?deltaHtml(cpVd, B.cpVd, true):''}` : ''],
   ];
   el.innerHTML = kpis.map(k=>`<div class="ckpi"><div class="ck-label">${k[0]}</div><div class="ck-val">${k[1]}</div><div class="ck-sub">${k[2]}</div>${k[3]?`<div class="cmp-b">${k[3]}</div>`:''}</div>`).join('');
 }
@@ -1303,7 +1763,7 @@ function renderCreativesTable(list, listB){
   if(listB){
     for(const b of listB) bmap[b.key] = b;
     const have = new Set(list.map(m=>m.key));
-    for(const b of listB) if(!have.has(b.key)) rows.push({ ...b, leads:0, mql:0, qmql:0, nmql:0, apres:0, vendas:0, invest:0, cpl:0, cplQual:0, convVenda:0, apresPct:0, vendasPct:0, qualified:0, spendDirect:false });
+    for(const b of listB) if(!have.has(b.key)) rows.push({ ...b, leads:0, mql:0, qmql:0, nmql:0, apres:0, agend:0, realiz:0, vendas:0, invest:0, cpl:0, cplQual:0, cpAgend:0, cpReal:0, cpVenda:0, convVenda:0, convReal:0, apresPct:0, vendasPct:0, qualified:0, tiers:{'MQL':{},'Q-MQL':{},'N-MQL':{}}, spendDirect:false });
   }
   if(CREATIVE_FILTER) rows = rows.filter(m => m.creative === CREATIVE_FILTER);
   const k = CREATIVE_SORT.key, dir = CREATIVE_SORT.dir;
@@ -1314,35 +1774,43 @@ function renderCreativesTable(list, listB){
     return (na - nb) * dir;
   });
   if(!rows.length){
-    const stSel = MS.adstatus ? [...MS.adstatus.getValues()] : [];
-    tbody.innerHTML = `<tr><td colspan="15"><div class="empty-state">Nenhum criativo corresponde aos filtros${stSel.length ? ' (status: ' + esc(stSel.join(', ')) + ')' : ''}.</div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="19"><div class="empty-state">Nenhum criativo corresponde aos filtros.</div></td></tr>`;
     return;
   }
   const byCampaign = CREATIVE_LEVEL === 'campaign';
+  const tbl = document.getElementById('creatives-table');
+  if(tbl) tbl.classList.toggle('lvl-campaign', byCampaign);
+  const tierLine = (obj) => {
+    if(!obj) return '';
+    const on = TIER_ORDER.filter(t=>obj[t]);
+    if(!on.length) return '';
+    return `<div class="tiers" title="${on.map(t=>t+': '+obj[t]).join(' · ')}">${on.map(t=>`<span style="color:${TIER_COLOR[t]}">${t[0]}${fmtNum(obj[t])}</span>`).join('')}</div>`;
+  };
   tbody.innerHTML = rows.map(m => {
     const [scls, stxt] = creativeStatus(m);
-    const statusCell = m.status === 'ATIVO'   ? '<span class="pill on">ATIVO</span>'
-                     : m.status === 'INATIVO' ? '<span class="pill off">INATIVO</span>'
-                     : '<span class="pill unk" title="A aba gasto_campanha não informou status para este item. Crie/preencha a coluna \'status\' com ATIVO ou INATIVO.">—</span>';
     const checked = CREATIVE_COMPARE.has(m.key) ? ' checked' : '';
     const bm = listB ? bmap[m.key] : null;
     const bc = (html) => listB ? `<div class="cellB">B: ${html}</div>` : '';
     return `
     <tr class="${m.status === 'INATIVO' ? 'is-off' : ''}"${CREATIVE_FILTER === m.creative ? ' style="background:rgba(192,57,43,.08)"' : ''}>
-      ${byCampaign ? '' : `<td class="wrap" style="max-width:200px;white-space:normal;line-height:1.4;color:#8A9AAB;font-size:12px">${esc(m.campaign)}</td>`}
-      <td style="width:34px"><input type="checkbox" class="cmp-check" data-creative="${esc(m.key)}"${checked}></td>
-      <td class="wrap" style="max-width:260px;white-space:normal;line-height:1.4"><span class="lead-name">${esc(m.creative)}</span></td>
-      <td>${statusCell}</td>
+      ${byCampaign ? '' : `<td class="wrap stick stick-1" style="max-width:190px;white-space:normal;line-height:1.4;color:#8A9AAB;font-size:12px">${esc(m.campaign)}</td>`}
+      <td class="stick stick-2" style="width:38px"><input type="checkbox" class="cmp-check" data-creative="${esc(m.key)}"${checked}></td>
+      <td class="wrap stick stick-3" style="max-width:210px;white-space:normal;line-height:1.4"><span class="lead-name">${esc(m.creative)}</span></td>
+      <td>${m.status === 'ATIVO' ? '<span class="pill on">ATIVO</span>' : (m.status === 'INATIVO' ? '<span class="pill off">INATIVO</span>' : '<span class="pill unk" title="A aba gasto_campanha não informou status para este item.">—</span>')}</td>
       <td class="num">${m.invest ? fmtBRLshort(m.invest) : '<span class="dim">—</span>'}${bc(bm && bm.invest ? fmtBRLshort(bm.invest) : '—')}</td>
       <td class="num">${fmtNum(m.leads)}${bc(bm ? fmtNum(bm.leads) : '—')}</td>
-      <td class="num" style="color:#C0392B;font-weight:600">${fmtNum(m.mql)}${bc(bm ? fmtNum(bm.mql) : '—')}</td>
-      <td class="num" style="color:#E8C547;font-weight:600">${fmtNum(m.qmql)}${bc(bm ? fmtNum(bm.qmql) : '—')}</td>
-      <td class="num" style="color:#8A9AAB">${fmtNum(m.nmql)}${bc(bm ? fmtNum(bm.nmql) : '—')}</td>
       <td class="num">${m.invest ? fmtBRL(m.cpl) : '<span class="dim">—</span>'}${bc(bm && bm.invest ? fmtBRL(bm.cpl) : '—')}</td>
+      <td class="num"><span style="color:#C0392B;font-weight:600">${fmtNum(m.mql)}</span>${tierLine(m.tiers && m.tiers['MQL'])}${bc(bm ? fmtNum(bm.mql) : '—')}</td>
+      <td class="num"><span style="color:#E8C547;font-weight:600">${fmtNum(m.qmql)}</span>${tierLine(m.tiers && m.tiers['Q-MQL'])}${bc(bm ? fmtNum(bm.qmql) : '—')}</td>
+      <td class="num"><span style="color:#8A9AAB">${fmtNum(m.nmql)}</span>${tierLine(m.tiers && m.tiers['N-MQL'])}${bc(bm ? fmtNum(bm.nmql) : '—')}</td>
       <td class="num">${m.invest ? (m.cplQual===Infinity?'<span class="trap">∞</span>':fmtBRL(m.cplQual)) : '<span class="dim">—</span>'}${bc(bm && bm.invest ? (bm.cplQual===Infinity?'∞':fmtBRL(bm.cplQual)) : '—')}</td>
-      <td class="num">${fmtNum(m.apres)} <span class="subpct">${m.apresPct.toFixed(1).replace('.',',')}%</span>${bc(bm ? fmtNum(bm.apres) : '—')}</td>
-      <td class="num" style="color:#E8C547;font-weight:700">${fmtNum(m.vendas)} <span class="subpct">${m.vendasPct.toFixed(1).replace('.',',')}%</span>${bc(bm ? fmtNum(bm.vendas) : '—')}</td>
-      <td class="num">${m.apres ? m.convVenda.toFixed(1).replace('.',',')+'%' : '<span class="dim">—</span>'}${bc(bm && bm.apres ? bm.convVenda.toFixed(1).replace('.',',')+'%' : '—')}</td>
+      <td class="num">${fmtNum(m.agend)} <span class="subpct">${pctStr(m.agend, m.leads)}</span>${bc(bm ? fmtNum(bm.agend) : '—')}</td>
+      <td class="num">${costStr(m.cpAgend, m.invest)}${bc(costStrB(bm, bm&&bm.cpAgend))}</td>
+      <td class="num">${fmtNum(m.realiz)} <span class="subpct">${pctStr(m.realiz, m.agend)}</span>${bc(bm ? fmtNum(bm.realiz) : '—')}</td>
+      <td class="num">${costStr(m.cpReal, m.invest)}${bc(costStrB(bm, bm&&bm.cpReal))}</td>
+      <td class="num" style="color:#E8C547;font-weight:700">${fmtNum(m.vendas)} <span class="subpct">${pctStr(m.vendas, m.leads)}</span>${bc(bm ? fmtNum(bm.vendas) : '—')}</td>
+      <td class="num">${costStr(m.cpVenda, m.invest)}${bc(costStrB(bm, bm&&bm.cpVenda))}</td>
+      <td class="num">${m.realiz ? fmt1(m.convReal)+'%' : '<span class="dim">—</span>'}${bc(bm && bm.realiz ? fmt1(bm.convReal)+'%' : '—')}</td>
       <td><span class="pill ${scls}">${stxt}</span></td>
     </tr>`;
   }).join('');
@@ -1391,11 +1859,86 @@ function renderCreativeCompare(list){
         ${line('CPL qualificado', m=> !m.invest ? '—' : (m.cplQual===Infinity?'∞':fmtBRL(m.cplQual)), m=> (best!==null && m.cplQual===best) ? 'win' : ((m.cplQual===Infinity||m.cplQual>CPLQ_GOAL)&&m.invest ? 'lose' : ''))}
         ${line('Custo / MQL', m=> !m.invest ? '—' : (m.cplMql===Infinity?'∞':fmtBRL(m.cplMql)))}
         ${line('Apres. agendada', m=>fmtNum(m.apres)+' ('+m.apresPct.toFixed(1).replace('.',',')+'%)')}
+        ${line('Reuniões agendadas', m=>fmtNum(m.agend)+(m.leads?' ('+pctStr(m.agend,m.leads)+')':''))}
+        ${line('Custo / reun. agendada', m=> !m.invest ? '—' : (m.cpAgend===Infinity?'∞':fmtBRL(m.cpAgend)))}
+        ${line('Reuniões realizadas', m=>fmtNum(m.realiz)+(m.agend?' ('+pctStr(m.realiz,m.agend)+')':''))}
+        ${line('Custo / reun. realizada', m=> !m.invest ? '—' : (m.cpReal===Infinity?'∞':fmtBRL(m.cpReal)))}
+        ${line('Custo / venda', m=> !m.invest ? '—' : (m.cpVenda===Infinity?'∞':fmtBRL(m.cpVenda)))}
+        ${line('Realiz. → Venda', m=> m.realiz ? fmt1(m.convReal)+'%' : '—')}
         ${line('Vendas', m=>fmtNum(m.vendas)+' ('+m.vendasPct.toFixed(1).replace('.',',')+'%)')}
         ${line('Apres. → Venda', m=> m.apres ? m.convVenda.toFixed(1).replace('.',',')+'%' : '—')}
         ${line('Veredito', verdict)}
       </tbody>
     </table></div>`;
+}
+
+/* =========================================================
+   REUNIÕES — cards
+========================================================= */
+function renderMeetKPIs(data, dataB){
+  const el = document.getElementById('meet-kpis');
+  if(!el) return;
+  const A = meetCounts(data);
+  const spend = totalSpend(getFilteredSpend());
+  const sales = data.filter(r=>r.stageView==='Venda').length;
+  let B = null, spendB = 0, salesB = 0;
+  if(dataB){ B = meetCounts(dataB); spendB = totalSpend(getFilteredSpend('B')); salesB = dataB.filter(r=>r.stageView==='Venda').length; }
+  const c = (label, val, sub, bVal) => ({label, val, sub, bVal});
+  const cards = [
+    c('Reuniões agendadas', fmtNum(A.agend), data.length ? pctStr(A.agend, data.length)+' dos leads' : '',
+      B ? `B: ${fmtNum(B.agend)}${deltaHtml(A.agend, B.agend, false)}` : ''),
+    c('Já realizadas', fmtNum(A.realiz), A.agend ? pctStr(A.realiz, A.agend)+' das agendadas' : '',
+      B ? `B: ${fmtNum(B.realiz)}${deltaHtml(A.realiz, B.realiz, false)}` : ''),
+    c('Ainda vão acontecer', fmtNum(A.futura), A.next ? 'próxima em '+fmtDateBR(A.next) : 'sem data futura',
+      B ? `B: ${fmtNum(B.futura)}` : ''),
+    c('Sem data registrada', fmtNum(A.semData), 'status inferido pelo estágio', B ? `B: ${fmtNum(B.semData)}` : ''),
+    c('Custo / reunião agendada', (spend && A.agend) ? fmtBRL(spend/A.agend) : '—', '',
+      B ? `B: ${(spendB && B.agend) ? fmtBRL(spendB/B.agend) : '—'}${(spend&&A.agend&&spendB&&B.agend)?deltaHtml(spend/A.agend, spendB/B.agend, true):''}` : ''),
+    c('Custo / reunião realizada', (spend && A.realiz) ? fmtBRL(spend/A.realiz) : '—', '',
+      B ? `B: ${(spendB && B.realiz) ? fmtBRL(spendB/B.realiz) : '—'}${(spend&&A.realiz&&spendB&&B.realiz)?deltaHtml(spend/A.realiz, spendB/B.realiz, true):''}` : ''),
+    c('Custo / venda', (spend && sales) ? fmtBRL(spend/sales) : '—', fmtNum(sales)+' vendas',
+      B ? `B: ${(spendB && salesB) ? fmtBRL(spendB/salesB) : '—'}${(spend&&sales&&spendB&&salesB)?deltaHtml(spend/sales, spendB/salesB, true):''}` : ''),
+    c('Realizada → Venda', A.realiz ? pctStr(sales, A.realiz) : '—', 'conversão da reunião',
+      B ? `B: ${B.realiz ? pctStr(salesB, B.realiz) : '—'}` : ''),
+  ];
+  el.innerHTML = cards.map(k=>`<div class="ckpi"><div class="ck-label">${k.label}</div><div class="ck-val">${k.val}</div><div class="ck-sub">${k.sub}</div>${k.bVal?`<div class="cmp-b">${k.bVal}</div>`:''}</div>`).join('');
+}
+
+/* =========================================================
+   OURO / PRATA / BRONZE dentro de cada tag
+========================================================= */
+function renderTierMatrix(data, dataB){
+  const panel = document.getElementById('tier-panel');
+  const wrap = document.getElementById('tier-matrix-wrap');
+  if(!panel || !wrap) return;
+  const hasTier = data.some(r=>r.tier) || (dataB ? dataB.some(r=>r.tier) : false);
+  if(!hasTier){ panel.style.display = 'none'; return; }
+  panel.style.display = '';
+  const cols = [...TIER_ORDER, ''];
+  const colLabel = t => t || 'Sem sub-classificação';
+  const count = (rows, tag, tier) => rows.filter(r => (tag ? r.tag===tag : TAG_ORDER.includes(r.tag)) && (tier ? r.tier===tier : !r.tier)).length;
+  const rowTotal = (rows, tag) => rows.filter(r => tag ? r.tag===tag : TAG_ORDER.includes(r.tag)).length;
+  const cell = (tag, tier) => {
+    const n = count(data, tag, tier);
+    const tot = rowTotal(data, tag);
+    const b = dataB ? count(dataB, tag, tier) : null;
+    return `<td class="num cell"><b>${fmtNum(n)}</b><span>${tot ? pctStr(n, tot) : '—'}</span>${b!==null?`<div class="cellB">B: ${fmtNum(b)}</div>`:''}</td>`;
+  };
+  const rows = [...TAG_ORDER, null].map(tag => {
+    const tot = rowTotal(data, tag);
+    const totB = dataB ? rowTotal(dataB, tag) : null;
+    const lab = tag
+      ? `<span class="stage-chip"><span class="dot" style="background:${TAG_COLOR[tag]}"></span>${tag}</span>`
+      : '<b style="letter-spacing:.06em">TOTAL</b>';
+    return `<tr${tag?'':' style="background:rgba(255,255,255,.02)"'}>
+      <td class="rowlab">${lab}</td>
+      ${cols.map(t=>cell(tag, t)).join('')}
+      <td class="num cell"><b>${fmtNum(tot)}</b><span>100%</span>${totB!==null?`<div class="cellB">B: ${fmtNum(totB)}</div>`:''}</td>
+    </tr>`;
+  }).join('');
+  wrap.innerHTML = `<table id="tier-matrix">
+    <thead><tr><th>Classificação</th>${cols.map(t=>`<th class="num">${t?`<span style="color:${TIER_COLOR[t]}">${t}</span>`:colLabel(t)}</th>`).join('')}<th class="num">Total</th></tr></thead>
+    <tbody>${rows}</tbody></table>`;
 }
 
 function wireCreativeControls(){
@@ -1506,7 +2049,7 @@ function renderLeadsTable(data){
   const slice = rows.slice(start, end);
 
   if(!total){
-    tbody.innerHTML = `<tr><td colspan="13"><div class="empty-state">Nenhum lead corresponde aos filtros aplicados.</div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="14"><div class="empty-state">Nenhum lead corresponde aos filtros aplicados.</div></td></tr>`;
     info.textContent = '0 leads';
     status.textContent = '0 / 0';
     prev.disabled = true; next.disabled = true;
@@ -1514,7 +2057,17 @@ function renderLeadsTable(data){
   }
 
   tbody.innerHTML = slice.map(r => {
-    const stageColor = STAGE_COLOR[r.stage] || '#5A6B7A';
+    const stageColor = STAGE_COLOR[r.stageView] || '#5A6B7A';
+    const mi = meetInfo(r);
+    const meetColor = mi.status==='realizada' ? '#3AA56B' : (mi.status==='futura' ? '#E8C547' : '#8A9AAB');
+    const meetLabel = mi.status==='realizada' ? 'Realizada' : (mi.status==='futura' ? 'Agendada' : 'Sem data');
+    const meetCell = mi.booked
+      ? `<div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start"><span class="stage-chip"><span class="dot" style="background:${meetColor}"></span>${meetLabel}</span>${mi.dt?`<span class="dim" style="font-size:10.5px">${fmtDateBR(mi.dt)}</span>`:''}</div>`
+      : '<span class="dim">—</span>';
+    const tagCell = TAG_ORDER.includes(r.tag)
+      ? `<span class="stage-chip" title="${esc(TAG_DESC[r.tag]||'')}"><span class="dot" style="background:${TAG_COLOR[r.tag]}"></span>${esc(r.tag)}</span>`
+      : '<span class="dim">—</span>';
+    const tierCell = r.tier ? `<span class="tier-chip" style="color:${TIER_COLOR[r.tier]}"><span class="dot" style="width:6px;height:6px;border-radius:50%;background:${TIER_COLOR[r.tier]}"></span>${esc(r.tier)}</span>` : '';
     return `
       <tr>
         <td><span class="lead-name">${esc(r.nome) || '—'}</span></td>
@@ -1523,7 +2076,8 @@ function renderLeadsTable(data){
         <td class="num">${esc(r.funcionarios) || '<span class="dim">—</span>'}</td>
         <td>${esc(r.pipeline) || '<span class="dim">—</span>'}</td>
         <td><span class="stage-chip"><span class="dot" style="background:${stageColor}"></span>${esc(r.stage) || '—'}</span></td>
-        <td>${TAG_ORDER.includes(r.tag) ? `<span class="stage-chip" title="${esc(TAG_DESC[r.tag]||'')}"><span class="dot" style="background:${TAG_COLOR[r.tag]}"></span>${esc(r.tag)}</span>` : '<span class="dim">—</span>'}</td>
+        <td><div style="display:flex;flex-direction:column;gap:3px;align-items:flex-start">${tagCell}${tierCell}</div></td>
+        <td>${meetCell}</td>
         <td class="num">${r.valor ? fmtBRL(r.valor) : '<span class="dim">—</span>'}</td>
         <td>${esc(r.canal) || '<span class="dim">—</span>'}</td>
         <td class="wrap">${esc(r.campaign) || '<span class="dim">—</span>'}</td>
@@ -1576,6 +2130,17 @@ class MultiSelect{
   }
   getValues(){ return new Set(this.selected); }
   setValues(arr){ this.selected = new Set(arr); this._updateLabel(); this._syncCheckboxes(); }
+  /* Troca a lista de opções. Usado quando o filtro de estágio alterna entre
+     os grupos do funil consolidado e as etapas cruas de um pipeline.
+     NÃO dispara onChange de propósito: é chamado de dentro do render, e
+     disparar aqui entraria em recursão. */
+  setOptions(arr){
+    this.options = [...arr];
+    for(const v of [...this.selected]) if(!this.options.includes(v)) this.selected.delete(v);
+    this._renderShell();
+    this._updateLabel();
+    this._syncCheckboxes();
+  }
   clear(){ if(!this.selected.size) return; this.selected.clear(); this._updateLabel(); this._syncCheckboxes(); }
   toggle(v){
     if(!this.options.includes(v)) return;
@@ -1678,7 +2243,7 @@ function renderOriginSummary(data, dataB){
   const sublabels = {
     'Anúncio':'Mídia paga → LP',
     'Formulário':'Facebook Lead Ads',
-    'Orgânico':'Bio + Manychat'
+    'Orgânico':'Bio + Manychat (vazio, social, dm, orgânico)'
   };
   for(const s of SOURCE_ORDER){
     const v = counts[s];
@@ -1705,8 +2270,11 @@ function renderOriginSummary(data, dataB){
 function summaryMetrics(data, period){
   const total = data.length;
   const spend = totalSpend(getFilteredSpend(period));
-  const sales = data.filter(r => r.stage === 'Venda').length;
-  return { total, spend, sales, cpl: total ? spend/total : 0, cps: sales ? spend/sales : 0 };
+  const sales = data.filter(r => r.stageView === 'Venda').length;
+  const mc = meetCounts(data);
+  return { total, spend, sales, agend:mc.agend, realiz:mc.realiz,
+    cpl: total ? spend/total : 0, cps: sales ? spend/sales : 0,
+    cpag: mc.agend ? spend/mc.agend : 0, cpre: mc.realiz ? spend/mc.realiz : 0 };
 }
 function deltaHtml(a, b, lowerIsBetter, neutral){
   if(!isFinite(a) || !isFinite(b) || !b) return '';
@@ -1717,18 +2285,27 @@ function deltaHtml(a, b, lowerIsBetter, neutral){
   return ` <span class="delta ${cls}">${up?'▲':'▼'} ${Math.abs(d).toFixed(1).replace('.',',')}%</span>`;
 }
 function renderSummary(data, dataB){
-  const A = summaryMetrics(data, 'A');
-  const B = dataB ? summaryMetrics(dataB, 'B') : null;
-  const fSpend = getFilteredSpend();
-  const spend = A.spend;
-  const put = (id, va, vb, dh) => { document.getElementById(id).innerHTML = va + (B ? `<span class="cmp-b">B: ${vb}${dh}</span>` : ''); };
-  put('sm-leads', fmtNum(A.total), B ? fmtNum(B.total) : '', B ? deltaHtml(A.total, B.total, false) : '');
-  put('sm-sales', fmtNum(A.sales), B ? fmtNum(B.sales) : '', B ? deltaHtml(A.sales, B.sales, false) : '');
-  put('sm-spend', A.spend ? fmtBRLshort(A.spend) : '—', B ? (B.spend ? fmtBRLshort(B.spend) : '—') : '', B ? deltaHtml(A.spend, B.spend, false, true) : '');
-  put('sm-cpl', A.spend ? fmtBRL(A.cpl) : '—', B ? (B.spend ? fmtBRL(B.cpl) : '—') : '', B ? deltaHtml(A.cpl, B.cpl, true) : '');
-  put('sm-cps', (A.spend && A.sales) ? fmtBRL(A.cps) : '—', B ? ((B.spend && B.sales) ? fmtBRL(B.cps) : '—') : '', B ? deltaHtml(A.cps, B.cps, true) : '');
+  const spendA = totalSpend(getFilteredSpend());
+  const attrA = creativeStats(data, 'A').reduce((a,m)=>a+m.invest, 0);
+  const unattrA = Math.max(0, spendA - attrA);
+  let B = null;
+  if(dataB){
+    const spendB = totalSpend(getFilteredSpend('B'));
+    const attrB = creativeStats(dataB, 'B').reduce((a,m)=>a+m.invest, 0);
+    B = { spend:spendB, attr:attrB, unattr:Math.max(0, spendB - attrB) };
+  }
+  const put = (id, va, vb, dh) => {
+    const el = document.getElementById(id);
+    if(el) el.innerHTML = va + (B ? `<span class="cmp-b">B: ${vb}${dh||''}</span>` : '');
+  };
+  const pctSpan = (v, tot) => tot ? ` <span class="dim" style="font-size:11px;font-family:'Outfit',sans-serif">${pctStr(v, tot)}</span>` : '';
+  put('sm-spend', spendA ? fmtBRLshort(spendA) : '—', B ? (B.spend ? fmtBRLshort(B.spend) : '—') : '', B ? deltaHtml(spendA, B.spend, false, true) : '');
+  put('sm-spend-attr', (attrA ? fmtBRLshort(attrA) : '—') + pctSpan(attrA, spendA), B ? (B.attr ? fmtBRLshort(B.attr) : '—') : '', '');
+  put('sm-spend-unattr', (unattrA > 1 ? fmtBRLshort(unattrA) : (spendA ? 'R$ 0' : '—')) + pctSpan(unattrA, spendA), B ? (B.unattr > 1 ? fmtBRLshort(B.unattr) : 'R$ 0') : '', '');
 
   // status diagnóstico do cruzamento de gasto
+  const fSpend = getFilteredSpend();
+  const spend = spendA;
   const status = document.getElementById('spend-status');
   if(status){
     if(!SPEND_RAW.length){
@@ -1866,20 +2443,21 @@ function renderTagsChart(data, dataB){
 */
 function stageReachedCount(rows, stage){
   // mantido para compatibilidade com o funil (cumulativo)
-  if(stage === STAGE_STANDBY){
-    return rows.filter(r => r.stage === STAGE_STANDBY).length;
+  // etapa fora do funil não acumula: conta só quem está nela
+  if(FORA_DO_FUNIL.includes(stage)){
+    return rows.filter(r => r.stageView === stage).length;
   }
   const minIdx = STAGE_ORDER.indexOf(stage);
   if(minIdx === -1) return 0;
   return rows.filter(r => {
-    const i = STAGE_ORDER.indexOf(r.stage);
+    const i = STAGE_ORDER.indexOf(r.stageView);
     return i >= minIdx;
   }).length;
 }
 
 // contagem de leads atualmente em uma etapa (sem cumular)
 function stageCurrentCount(rows, stage){
-  return rows.filter(r => r.stage === stage).length;
+  return rows.filter(r => r.stageView === stage).length;
 }
 
 function renderPipelineChart(data, dataB){
@@ -1894,8 +2472,16 @@ function renderPipelineChart(data, dataB){
     const ia=SOURCE_ORDER.indexOf(a), ib=SOURCE_ORDER.indexOf(b);
     return (ia===-1?99:ia)-(ib===-1?99:ib);
   });
-  // sempre mostrar todas as etapas + Standby (mesmo zeradas), respeitando ordem
-  const stages = [...STAGE_ORDER, STAGE_STANDBY];
+  // sempre mostrar todas as etapas + as de fora do funil (mesmo zeradas),
+  // respeitando a ordem
+  const stages = [...STAGE_ORDER, ...FORA_DO_FUNIL];
+
+  /* Piso de altura: 42px por etapa é a mesma altura de uma .funnel-row, então
+     as duas colunas ficam na mesma cadência; +70px para o eixo X e a legenda.
+     Sem isso, um funil com muitas etapas espremeria os rótulos de duas linhas
+     (nome + custo/lead) e o Chart.js começaria a pular nomes. O painel ainda
+     pode esticar além disso para acompanhar o funil ao lado. */
+  wrap.style.minHeight = Math.max(380, stages.length * 42 + 70) + 'px';
 
   // ---- custo por lead em cada estágio ----
   // CPL_estagio = investido total (no recorte) / leads atualmente neste estágio
@@ -1959,7 +2545,6 @@ function renderPipelineChart(data, dataB){
           backgroundColor:'#181818', borderColor:'#2A2A2A', borderWidth:1, padding:12,
           titleColor:'#fff', bodyColor:'#fff', titleFont:{family:'Outfit',weight:'600',size:13}, bodyFont:{family:'Outfit',size:12},
           callbacks:{
-            title: (items)=> items[0].label,
             label: (c)=>{
               if(cmpMode) return ' ' + c.dataset.label + ': ' + fmtNum(c.parsed.x) + ' leads';
               const stageIdx = c.dataIndex;
@@ -1968,9 +2553,12 @@ function renderPipelineChart(data, dataB){
               const pct = total ? (v/total*100) : 0;
               return ' ' + c.dataset.label + ': ' + fmtNum(v) + ' leads  •  ' + pct.toFixed(1).replace('.',',') + '%';
             },
-            title: (items)=> stages[items[0].dataIndex],
+            /* O `filter` acima descarta itens zerados. Numa etapa vazia em
+               todas as origens a lista fica sem nenhum item, e aí items[0]
+               é undefined — daí as guardas. */
+            title: (items)=> (items.length ? stages[items[0].dataIndex] : ''),
             footer: (items)=>{
-              if(cmpMode) return [];
+              if(cmpMode || !items.length) return [];
               const stageIdx = items[0].dataIndex;
               const total = items[0].chart.data.datasets.reduce((s,ds)=> s + (ds.data[stageIdx]||0), 0);
               const lines = ['Total no estágio: ' + fmtNum(total) + ' leads'];
@@ -1985,7 +2573,9 @@ function renderPipelineChart(data, dataB){
       },
       scales:{
         x:{ stacked:!cmpMode, grid:{color:'rgba(255,255,255,.04)'}, ticks:{ color:'#A0A0A0', font:{family:'Outfit'} } },
-        y:{ stacked:!cmpMode, grid:{display:false}, ticks:{ color:'#fff', font:{family:'Outfit', size:12, weight:'500'}, callback: function(val, idx){ return tickLabels[idx]; } } }
+        // autoSkip:false — a altura acima já garante espaço para todos os
+        // nomes, e pular etapa no eixo tornava o gráfico ilegível
+        y:{ stacked:!cmpMode, grid:{display:false}, ticks:{ autoSkip:false, color:'#fff', font:{family:'Outfit', size:12, weight:'500'}, callback: function(val, idx){ return tickLabels[idx]; } } }
       }
     }
   });
@@ -2012,8 +2602,6 @@ function renderFunnel(data, dataB){
     total: stageReachedCount(data, st),
     color: STAGE_COLOR[st] || '#5A6B7A'
   }));
-  const standbyTotal = data.filter(r => r.stage === STAGE_STANDBY).length;
-
   const topB = dataB ? stageReachedCount(dataB, stages[0]) : 0;
   const top = totals[0]?.total || 0;
   if(top === 0 && !topB){
@@ -2042,26 +2630,36 @@ function renderFunnel(data, dataB){
     wrap.appendChild(row);
   }
 
-  // Standby — fora da ordem, mostrado em separado
-  if(standbyTotal > 0){
+  /* Etapas marcadas com showInFunnel = false no CRM (hoje Standby e Base).
+     Ficam abaixo de uma divisória e não entram na conversão cumulativa. */
+    const foraComLeads = FORA_DO_FUNIL
+    .map(st => ({ stage: st, total: data.filter(r => r.stageView === st).length }))
+    .filter(x => x.total > 0);
+
+  if(foraComLeads.length){
     const sep = document.createElement('div');
     sep.style.cssText = 'margin:10px 0 4px;font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--dim)';
     sep.textContent = '— Fora do funil —';
     wrap.appendChild(sep);
-    const pctOfTop = top ? (standbyTotal / top) * 100 : 0;
-    const standbyB = dataB ? dataB.filter(r => r.stage === STAGE_STANDBY).length : 0;
-    const row = document.createElement('div');
-    row.className = 'funnel-row';
-    row.innerHTML = `
-      <div class="name">Standby</div>
-      <div class="track">
-        <span class="seg" style="width:${Math.max(pctOfTop,0)}%;background:${STAGE_COLOR['Standby']}">
-          <span class="seg-label">${pctOfTop.toFixed(1).replace('.',',')}%</span>
-        </span>
-      </div>
-      <div class="val">${fmtNum(standbyTotal)}${dataB ? `<span class="cmp-b">B: ${fmtNum(standbyB)}${deltaHtml(standbyTotal, standbyB, false)}</span>` : ''}</div>
-    `;
-    wrap.appendChild(row);
+
+    for(const f of foraComLeads){
+      const pctOfTop = top ? (f.total / top) * 100 : 0;
+      const bVal = dataB ? dataB.filter(r => r.stageView === f.stage).length : 0;
+      const row = document.createElement('div');
+      row.className = 'funnel-row';
+      row.innerHTML = `
+        <div class="name">${f.stage}</div>
+        <div class="track">
+          <span class="seg" style="width:${Math.max(pctOfTop,0)}%;background:${STAGE_COLOR[f.stage] || '#3A3A3A'}">
+            <span class="seg-label">${pctOfTop.toFixed(1).replace('.',',')}%</span>
+          </span>
+        </div>
+        <div class="val">${fmtNum(f.total)}${dataB ? `<span class="cmp-b">B: ${fmtNum(bVal)}${deltaHtml(f.total, bVal, false)}</span>` : ''}</div>
+      `;
+      row.title = 'Filtrar por estágio: ' + f.stage;
+      row.addEventListener('click', ()=> applyFilter('f-stage', f.stage));
+      wrap.appendChild(row);
+    }
   }
 
   // nota
@@ -2082,7 +2680,7 @@ function renderTableLegacy(data){
   const rows = [];
   for(const src of sources){
     for(const st of STAGE_ORDER){
-      const sub = data.filter(r=>r.source===src && r.stage===st);
+      const sub = data.filter(r=>r.source===src && r.stageView===st);
       if(!sub.length) continue;
       const vol = sub.length;
       const inv = sub.reduce((s,r)=>s+r.valor,0);

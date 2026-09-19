@@ -1,0 +1,11 @@
+# NUNCA commitar credenciais
+worker/.dev.vars
+.dev.vars
+*.env
+.env*
+
+# saida da sondagem da API (pode conter mapeamentos internos)
+probe-output/
+
+node_modules/
+.wrangler/
