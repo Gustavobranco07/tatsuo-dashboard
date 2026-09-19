@@ -185,6 +185,8 @@
 
   /* ---------- ORIGIN SUMMARY ---------- */
   .origin-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px}
+  .nota-retorno{margin:-6px 0 18px;font-size:12px;color:var(--muted);line-height:1.5}
+  .nota-retorno b{color:var(--text);font-weight:600}
   .origin-card{
     background:var(--card);border:1px solid var(--border);border-radius:14px;
     padding:18px 20px;position:relative;overflow:hidden;display:flex;flex-direction:column;gap:10px;
@@ -236,6 +238,11 @@
   .funnel-row .track .seg-label{font-family:'Outfit',sans-serif;font-weight:600;font-size:11px;color:#fff;letter-spacing:.04em;text-shadow:0 1px 2px rgba(0,0,0,.4);white-space:nowrap}
   .funnel-row .track > span:not(.seg){display:block;height:100%;transition:width .8s cubic-bezier(.2,.8,.2,1)}
   .funnel-row .val{font-family:'Bebas Neue',sans-serif;font-size:18px;text-align:right}
+  /* Motivo de perda é texto livre e bem mais longo que nome de etapa: coluna
+     mais larga, sem caixa alta e sem o espaçamento entre letras, senão
+     "Informou que não poderá participar, sem expor motivo." vira 4 linhas. */
+  #motivos .funnel-row{grid-template-columns:280px 1fr 90px}
+  #motivos .funnel-row .name{text-transform:none;letter-spacing:.02em;font-size:13px;color:var(--text)}
 
   /* ---------- LOADING / ERROR ---------- */
   .veil{
@@ -312,6 +319,16 @@
   .pill.unk{color:var(--dim);background:rgba(255,255,255,.04)}
   tr.is-off td{opacity:.72}
   .goalbox .multi-select{min-width:180px}
+
+  /* Busca da tabela de leads. Fica no cabeçalho do bloco, alinhada à direita
+     junto do texto descritivo. */
+  .busca{
+    display:block;margin-top:10px;margin-left:auto;width:min(320px,100%);
+    background:var(--bg-2);border:1px solid var(--border);color:var(--text);
+    padding:9px 13px;border-radius:8px;font-family:inherit;font-size:13px;
+  }
+  .busca::placeholder{color:var(--dim)}
+  .busca:focus{outline:none;border-color:var(--accent)}
   .goalbox .ms-panel{min-width:200px}
   .trap{color:#E5484D;font-weight:800}
   .subpct{font-size:10.5px;color:var(--dim);font-weight:400;margin-left:3px}
@@ -464,6 +481,10 @@
           <label>Tag</label>
           <div id="f-tag" class="multi-select"></div>
         </div>
+        <div class="field" id="field-motivo">
+          <label>Motivo da perda</label>
+          <div id="f-motivo" class="multi-select"></div>
+        </div>
         <div class="field" id="field-tier">
           <label>Ouro / Prata / Bronze</label>
           <div id="f-tier" class="multi-select"></div>
@@ -518,6 +539,7 @@
         </div>
 
         <div class="origin-grid" id="origin-grid"></div>
+        <div class="nota-retorno" id="nota-retorno" style="display:none"></div>
 
         <div class="two-col">
           <div class="panel">
@@ -533,6 +555,26 @@
               <div class="hint">Leads presentes em cada etapa agora — empilhado por origem</div>
             </div>
             <div class="chart-wrap tall" id="chart-pipeline-wrap"><canvas id="chart-pipeline"></canvas></div>
+          </div>
+        </div>
+
+        <div class="panel" id="panel-motivos" style="margin-top:18px">
+          <div class="panel-head">
+            <h3>Motivos de perda</h3>
+            <div class="hint" id="motivos-hint">—</div>
+            <div class="level-toggle" id="motivos-toggle">
+              <button type="button" data-tab="ativos" class="active">Existentes no CRM</button>
+              <button type="button" data-tab="todos">Todos</button>
+            </div>
+          </div>
+          <div id="motivos"></div>
+          <div class="table-foot" id="motivos-foot" style="display:none">
+            <div class="table-info" id="motivos-info">—</div>
+            <div class="table-pager">
+              <button id="motivos-prev" type="button">‹ Anterior</button>
+              <span class="page-status" id="motivos-status">1 / 1</span>
+              <button id="motivos-next" type="button">Próximo ›</button>
+            </div>
           </div>
         </div>
       </section>
@@ -587,6 +629,14 @@
               <tbody></tbody>
             </table>
           </div>
+          <div class="table-foot" id="creatives-foot" style="display:none">
+            <div class="table-info" id="creatives-info">—</div>
+            <div class="table-pager">
+              <button id="creatives-prev" type="button">‹ Anterior</button>
+              <span class="page-status" id="creatives-status">1 / 1</span>
+              <button id="creatives-next" type="button">Próximo ›</button>
+            </div>
+          </div>
         </div>
         <div class="panel" style="margin-top:18px">
           <div class="panel-head">
@@ -604,7 +654,10 @@
             <div class="label">Bloco 04 — Lista de Leads</div>
             <h2>LEADS DETALHADOS</h2>
           </div>
-          <div class="desc">Lista paginada com 20 leads por página, respeitando todos os filtros aplicados acima.</div>
+          <div class="desc">
+            Lista paginada com 20 leads por página, respeitando todos os filtros aplicados acima.
+            <input type="search" id="leads-busca" class="busca" placeholder="Buscar por nome ou telefone" autocomplete="off">
+          </div>
         </div>
         <div class="panel" style="padding:0;overflow:hidden">
           <div class="table-wrap">
@@ -956,21 +1009,147 @@ const SOURCE_ORDER = ['Anúncio','Formulário','Orgânico'];
 const SOURCE_COLOR = { 'Anúncio':'#C0392B', 'Formulário':'#E8C547', 'Orgânico':'#5A6B7A' };
 const SOURCE_ICON  = { 'Anúncio':'◆', 'Formulário':'◉', 'Orgânico':'◈' };
 
-/* Classify origem based on medium + campaign
-   - medium vazio       => Orgânico (Manychat)
-   - medium social*     => Orgânico (link da bio) — exceto se a campanha for [FORMS]
-   - medium dm          => Orgânico (Manychat) — exceto se a campanha for [FORMS]
-   - medium organico    => Orgânico
-   - qualquer outro     => Ads -> se campaign contém [FORMS] = Formulário (FB Lead Ads), senão Anúncio (LP)
-   Prefer last_atribution_medium; fallback first_atribution_medium */
-function classifySource(lastMed, firstMed, lastCamp, firstCamp){
-  const med = (lastMed && String(lastMed).trim()) || (firstMed && String(firstMed).trim()) || '';
-  if(!med) return 'Orgânico';
-  const campU = [lastCamp, firstCamp].filter(Boolean).map(String).join(' | ').toUpperCase();
-  const isForms = campU.includes('[FORMS]') || campU.includes('FORMS');
-  if(/social/i.test(med)) return isForms ? 'Formulário' : 'Orgânico';
+/* =========================================================
+   ORIGEM DO LEAD — Anúncio / Formulário / Orgânico
+
+   Anúncio    = mídia paga que caiu numa landing page
+   Formulário = Facebook Lead Ads, reconhecido pelo [FORMS] no nome da campanha
+   Orgânico   = tudo que não teve mídia paga por trás
+
+   A ordem das regras importa: a última é uma captura por exclusão. Sem as
+   exceções acima dela, tudo que não se encaixa nas anteriores vira "Anúncio"
+   — foi assim que 1.167 leads de formulário sem mídia e 88 contatos criados
+   à mão acabaram contados como anúncio.
+========================================================= */
+
+/* Mediums de formulário que, SEM campanha e SEM conteúdo, não têm mídia paga
+   por trás — são leads orgânicos. Com campanha seguem as regras normais, ou
+   seja, um `survey` com campanha [FORMS] continua sendo Formulário. */
+const MEDIUMS_SEM_MIDIA = new Set(['survey', 'external form', 'form']);
+
+/* A partir desta data a automação passou a gravar first E last corretamente,
+   e lead que retorna tem só o `last` atualizado. Antes só o `first` era
+   gravado na criação, então lá é preciso aceitar qualquer um dos dois.
+   Data conferida na planilha pelo Gabriel. */
+const CORTE_ATRIBUICAO = '2026-05-02';
+
+/**
+ * Decide de qual conjunto de atribuição (first ou last) a linha deve ler.
+ *
+ * A atribuição mora no CONTATO, não na oportunidade. Um contato com duas
+ * oportunidades faz as duas lerem o mesmo `last`, e a mais antiga acabaria
+ * levando a atribuição da entrada mais recente. Não há como casar cada
+ * oportunidade com a entrada certa: a lista `attributions` nativa do GHL vem
+ * vazia nesses contatos e os custom fields não têm carimbo de data.
+ *
+ * A saída é casar por ordem: dentro de cada contato, a oportunidade mais
+ * recente usa o `last` e as anteriores usam o `first`. Resolve certo os 322
+ * contatos com duas entradas. Em contatos com três ou mais, as 59 do meio
+ * ficam com o `first` — indeterminadas, mas consistentes com a regra.
+ */
+function atribuicaoDaLinha(r, ehMaisRecenteDoContato){
+  const dt = String(r.dt_criacao_oportunidade || '');
+
+  // Regime antigo (e linhas sem data): aceita qualquer um dos dois.
+  if(!dt || dt < CORTE_ATRIBUICAO){
+    return {
+      medium:   r.last_atribution_medium   || r.first_atribution_medium   || '',
+      campanha: r.last_atribution_campaign || r.first_atribution_campaign || '',
+      conteudo: r.last_atribution_content  || r.first_atribution_content  || '',
+      // aqui o [FORMS] vale vindo de qualquer uma das duas, como sempre foi
+      campanhaParaForms: [r.last_atribution_campaign, r.first_atribution_campaign]
+        .filter(Boolean).join(' | '),
+      regimeNovo: false,
+    };
+  }
+
+  const p = ehMaisRecenteDoContato ? 'last' : 'first';
+  const campanha = r[p + '_atribution_campaign'] || '';
+  return {
+    medium:   r[p + '_atribution_medium']  || '',
+    campanha,
+    conteudo: r[p + '_atribution_content'] || '',
+    campanhaParaForms: campanha,
+    regimeNovo: true,
+  };
+}
+
+/**
+ * Preenche `source` em todas as linhas do RAW.
+ *
+ * Roda numa segunda passada, depois do RAW montado, porque decidir se uma
+ * oportunidade é a mais recente do contato exige conhecer todas as
+ * oportunidades daquele contato — o que não dá para saber linha a linha
+ * dentro do map.
+ *
+ * `brutos` são as linhas cruas vindas do snapshot, alinhadas por índice com
+ * o RAW (os dois saem do mesmo map).
+ */
+/* Liga cada linha do RAW à linha crua de onde ela veio. Usado pelo indicador
+   de "pago que voltou orgânico", que precisa comparar as duas atribuições —
+   e o RAW só guarda a que foi escolhida. WeakMap para não segurar memória. */
+let BRUTOS_POR_LINHA = new WeakMap();
+
+function definirOrigens(brutos){
+  BRUTOS_POR_LINHA = new WeakMap();
+  const porContato = new Map();
+  RAW.forEach((row, i) => {
+    if(!row.id) return;
+    if(!porContato.has(row.id)) porContato.set(row.id, []);
+    porContato.get(row.id).push(i);
+  });
+
+  const maisRecente = new Set();
+  for(const idxs of porContato.values()){
+    let melhor = idxs[0];
+    for(const i of idxs){
+      // >= para que, em empate de data, a última da lista vença
+      if(String(brutos[i].dt_criacao_oportunidade || '') >=
+         String(brutos[melhor].dt_criacao_oportunidade || '')) melhor = i;
+    }
+    maisRecente.add(melhor);
+  }
+
+  RAW.forEach((row, i) => {
+    // linha sem contato é tratada como única oportunidade dele
+    const ehRecente = !row.id || maisRecente.has(i);
+    const atrib = atribuicaoDaLinha(brutos[i], ehRecente);
+    row.source = classifySource(atrib);
+
+    /* Campanha e criativo saem do MESMO lado que decidiu a origem — senão a
+       linha se contradiz: aparece como Orgânico (lido do `last`) e ao mesmo
+       tempo dentro de um criativo pago (lido do `first`), contando nos dois
+       lugares. Se aquele lado não tem campanha ou criativo, fica vazio.
+
+       Só no regime novo. No antigo a origem vem de um híbrido dos dois, então
+       não existe "o lado escolhido" — lá os dois campos ficam como o `map` os
+       montou, inclusive com as prioridades invertidas entre si que sempre
+       existiram (campanha `first||last`, criativo `last||first`). É histórico
+       e não se reclassifica. */
+    if(atrib.regimeNovo){
+      row.campaign = String(atrib.campanha || '').trim();
+      row.conteudo = String(atrib.conteudo || '').trim();
+    }
+
+    BRUTOS_POR_LINHA.set(row, brutos[i]);
+  });
+}
+
+function classifySource(atrib){
+  const med = String(atrib.medium || '').trim();
+  if(!med) return 'Orgânico';                       // Manychat e afins
+
+  // contato criado à mão no CRM: não veio de anúncio nenhum
+  if(/^manual$/i.test(med)) return 'Orgânico';
+
+  const camp = String(atrib.campanha || '').trim();
+  const cont = String(atrib.conteudo || '').trim();
+  if(MEDIUMS_SEM_MIDIA.has(med.toLowerCase()) && !camp && !cont) return 'Orgânico';
+
+  const isForms = String(atrib.campanhaParaForms || '').toUpperCase().includes('FORMS');
+  if(/social/i.test(med)) return isForms ? 'Formulário' : 'Orgânico';   // link da bio
   if(/(^|[^a-z0-9])dm([^a-z0-9]|$)/i.test(med)) return isForms ? 'Formulário' : 'Orgânico';
-  if(/organic/i.test(med.normalize('NFD').replace(/[\u0300-\u036f]/g,''))) return 'Orgânico';
+  if(/organic/i.test(med.normalize('NFD').replace(/[̀-ͯ]/g,''))) return 'Orgânico';
   if(isForms) return 'Formulário';
   return 'Anúncio';
 }
@@ -1252,7 +1431,6 @@ function loadData(){
           const lastMed   = r.last_atribution_medium  || '';
           const firstCamp = r.first_atribution_campaign || '';
           const lastCamp  = r.last_atribution_campaign  || '';
-          const source    = classifySource(lastMed, firstMed, lastCamp, firstCamp);
           // helper p/ ler cabeçalho com múltiplos nomes possíveis
           const pick = (...keys) => {
             for(const k of keys){
@@ -1279,10 +1457,15 @@ function loadData(){
             meetDone,
             meetDt: meetDone || meetSched,
             closer: pick('closer'),
+            motivo: pick('motivo_perda'),
+            motivoId: pick('motivo_perda_id'),
+            // vem booleano do snapshot; string quando a fonte é o CSV antigo
+            motivoAtivo: r.motivo_ativo === true || r.motivo_ativo === 'true',
             tagsRaw: tagRaw,
             stage: normStage(r.estagio_pipeline||''),
             pipeline: (r.nome_pipeline || r.pipeline || r.Pipeline || '').trim(),
-            source,
+            // preenchido na segunda passada, em definirOrigens()
+            source: '',
             campaign: (firstCamp || lastCamp || '').trim(),
             firstMed: String(firstMed).trim(),
             lastMed:  String(lastMed).trim(),
@@ -1291,6 +1474,7 @@ function loadData(){
             status: (r.status||'').trim(),
           };
         });
+        definirOrigens(res.data);
       }
       try{
         const tiers = {}; for(const r of RAW){ if(r.tier) tiers[r.tier]=(tiers[r.tier]||0)+1; }
@@ -1331,6 +1515,17 @@ function bootstrap(){
   MS.pipeline = new MultiSelect(document.getElementById('f-pipeline'), { allLabel:'Todos os pipelines', options:pipelines, onChange:render });
   MS.camp     = new MultiSelect(document.getElementById('f-camp'),     { allLabel:'Todas as campanhas', options:camps, onChange:render });
   MS.tag      = new MultiSelect(document.getElementById('f-tag'),      { allLabel:'Todas as tags', options:['MQL','Q-MQL','N-MQL'], onChange:render });
+
+  /* Motivos ordenados por volume: a lista é longa (38 motivos distintos) e
+     os que importam são os de cima. */
+  const motivosPorVolume = Object.entries(
+    RAW.reduce((a,r) => (r.motivo && (a[r.motivo] = (a[r.motivo]||0)+1), a), {})
+  ).sort((a,b) => b[1]-a[1]).map(([m]) => m);
+  if(motivosPorVolume.length){
+    MS.motivo = new MultiSelect(document.getElementById('f-motivo'), { allLabel:'Todos os motivos', options:motivosPorVolume, onChange:render });
+  } else {
+    document.getElementById('field-motivo').style.display = 'none';
+  }
   const tiersFound = TIER_ORDER.filter(t => RAW.some(r => r.tier === t));
   if(tiersFound.length){
     MS.tier = new MultiSelect(document.getElementById('f-tier'), { allLabel:'Ouro, prata e bronze', options:tiersFound, onChange:render });
@@ -1370,6 +1565,7 @@ function bootstrap(){
     MS.camp.clear(); MS.tag.clear(); MS.stage.clear(); MS.source.clear(); MS.pipeline.clear(); MS.creative.clear();
     if(MS.tier) MS.tier.clear();
     if(MS.vert) MS.vert.clear();
+    if(MS.motivo) MS.motivo.clear();
     if(MS.adstatus) MS.adstatus.clear();
     if(dates.length){
       document.getElementById('f-start').value = dates[0].toISOString().slice(0,10);
@@ -1389,6 +1585,9 @@ function bootstrap(){
     syncAt.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}) + ' (' + idade + ')';
 
   wireTablePager();
+  wireMotivos();
+  wireCreativesPager();
+  wireBuscaLeads();
   wireCreativesSort();
   wireCreativeControls();
   wireCompare();
@@ -1415,6 +1614,7 @@ function getFilters(period){
     pipeline:MS.pipeline ? MS.pipeline.getValues() : new Set(),
     tier:    MS.tier     ? MS.tier.getValues()     : new Set(),
     vert:    MS.vert     ? MS.vert.getValues()     : new Set(),
+    motivo:  MS.motivo   ? MS.motivo.getValues()   : new Set(),
   };
 }
 /* campanhas que pertencem às verticais selecionadas (para recortar o gasto) */
@@ -1446,6 +1646,12 @@ function getFiltered(period){
     if(f.pipeline.size && !f.pipeline.has(r.pipeline)) return false;
     if(f.tier.size && !f.tier.has(r.tier)) return false;
     if(f.vert.size && !f.vert.has(r.vertical)) return false;
+    /* Exige status 'lost' junto com o motivo. Existem 3 oportunidades que
+       foram perdidas, reabertas, e ficaram carregando o lostReasonId antigo.
+       Sem essa condição elas apareceriam num filtro chamado "Motivo da
+       perda" sem estarem perdidas, e a contagem da página não bateria com a
+       da tabela de motivos, que conta só perdas. */
+    if(f.motivo.size && !(r.status === 'lost' && f.motivo.has(r.motivo))) return false;
     return true;
   });
 }
@@ -1579,6 +1785,8 @@ function spendByTag(){
 ========================================================= */
 function render(){
   TABLE_PAGE = 1; // qualquer mudança de filtro reseta para página 1
+  MOTIVOS_PAGE = 1;
+  CREATIVE_PAGE = 1;
   // o funil depende de quais pipelines estão filtrados, então é recalculado
   // antes de desenhar qualquer coisa
   atualizarEtapas();
@@ -1589,6 +1797,7 @@ function render(){
   renderOriginSummary(data, dataB);
   renderPipelineChart(data, dataB);
   renderFunnel(data, dataB);
+  renderLossReasons(data, dataB);
   renderCreatives(data, dataB);
   renderLeadsTable(data);
 }
@@ -1598,6 +1807,8 @@ function render(){
 ========================================================= */
 let CREATIVE_SORT = { key:'leads', dir:-1 };
 let CREATIVE_FILTER = null;
+let CREATIVE_PAGE = 1;
+const CREATIVE_PAGE_SIZE = 20;
 let CREATIVE_LEVEL = 'creative'; // 'creative' | 'campaign' — toggle de nível
 
 function creativeStats(data, period){
@@ -1773,10 +1984,36 @@ function renderCreativesTable(list, listB){
     const na = (va===Infinity? 1e15 : va)||0, nb = (vb===Infinity? 1e15 : vb)||0;
     return (na - nb) * dir;
   });
+  const foot = document.getElementById('creatives-foot');
   if(!rows.length){
     tbody.innerHTML = `<tr><td colspan="19"><div class="empty-state">Nenhum criativo corresponde aos filtros.</div></td></tr>`;
+    if(foot) foot.style.display = 'none';
     return;
   }
+
+  /* Pagina DEPOIS de ordenar, para a ordenação valer sobre a lista inteira e
+     não só sobre as linhas visíveis. Os KPIs e o bloco de comparação seguem
+     usando a lista toda — são agregados, quem pagina é só a tabela. */
+  const totalLinhas = rows.length;
+  const paginas = Math.max(1, Math.ceil(totalLinhas / CREATIVE_PAGE_SIZE));
+  if(CREATIVE_PAGE > paginas) CREATIVE_PAGE = paginas;
+  if(CREATIVE_PAGE < 1) CREATIVE_PAGE = 1;
+  const paginando = totalLinhas > CREATIVE_PAGE_SIZE;
+  const inicio = paginando ? (CREATIVE_PAGE - 1) * CREATIVE_PAGE_SIZE : 0;
+  if(paginando) rows = rows.slice(inicio, inicio + CREATIVE_PAGE_SIZE);
+
+  if(foot){
+    foot.style.display = paginando ? '' : 'none';
+    if(paginando){
+      document.getElementById('creatives-info').textContent =
+        'Mostrando ' + (inicio + 1) + '–' + (inicio + rows.length) + ' de ' + totalLinhas +
+        (CREATIVE_LEVEL === 'campaign' ? ' campanhas' : ' criativos');
+      document.getElementById('creatives-status').textContent = CREATIVE_PAGE + ' / ' + paginas;
+      document.getElementById('creatives-prev').disabled = CREATIVE_PAGE <= 1;
+      document.getElementById('creatives-next').disabled = CREATIVE_PAGE >= paginas;
+    }
+  }
+
   const byCampaign = CREATIVE_LEVEL === 'campaign';
   const tbl = document.getElementById('creatives-table');
   if(tbl) tbl.classList.toggle('lvl-campaign', byCampaign);
@@ -1953,6 +2190,7 @@ function wireCreativeControls(){
       toggle.querySelectorAll('button').forEach(b=>b.classList.toggle('active', b===btn));
       CREATIVE_COMPARE.clear();
       CREATIVE_FILTER = null;
+      CREATIVE_PAGE = 1;   // a outra lista tem outro tamanho
       const isCamp = CREATIVE_LEVEL === 'campaign';
       const th = document.getElementById('th-level');
       if(th) th.textContent = isCamp ? 'Campanha' : 'Criativo';
@@ -1990,6 +2228,32 @@ function wireCreativeControls(){
   }
 }
 
+/** Campo de busca da tabela de leads. Ligado uma vez, no bootstrap. */
+function wireBuscaLeads(){
+  const el = document.getElementById('leads-busca');
+  if(!el || el.dataset.wired) return;
+  el.dataset.wired = '1';
+  // sem debounce: filtrar e ordenar 7 mil linhas leva menos de um milissegundo
+  el.addEventListener('input', ()=>{
+    LEADS_BUSCA = el.value.trim();
+    TABLE_PAGE = 1;
+    renderLeadsTable(getFiltered());
+  });
+}
+
+/** Paginador da tabela de criativos. Ligado uma vez, no bootstrap. */
+function wireCreativesPager(){
+  const passo = (d) => {
+    CREATIVE_PAGE = Math.max(1, CREATIVE_PAGE + d);
+    renderCreativesTable(creativeStats(getFiltered(), 'A'),
+      CMP_ON ? creativeStats(getFiltered('B'), 'B') : null);
+  };
+  for(const [id, d] of [['creatives-prev', -1], ['creatives-next', 1]]){
+    const b = document.getElementById(id);
+    if(b && !b.dataset.wired){ b.dataset.wired = '1'; b.addEventListener('click', ()=> passo(d)); }
+  }
+}
+
 function wireCreativesSort(){
   document.querySelectorAll('#creatives-table thead th[data-sort]').forEach(th=>{
     th.style.cursor = 'pointer';
@@ -1998,6 +2262,7 @@ function wireCreativesSort(){
       const key = th.dataset.sort;
       if(CREATIVE_SORT.key === key) CREATIVE_SORT.dir *= -1;
       else CREATIVE_SORT = { key, dir:-1 };
+      CREATIVE_PAGE = 1;   // reordenou: o topo da lista mudou
       renderCreativesTable(creativeStats(getFiltered(), 'A'), CMP_ON ? creativeStats(getFiltered('B'), 'B') : null);
     });
   });
@@ -2026,12 +2291,35 @@ function esc(s){
   return String(s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
+/**
+ * Busca da tabela de leads.
+ *
+ * Vale SÓ para esta tabela: não entra em getFiltered, então os KPIs, o funil
+ * e os motivos de perda não se mexem enquanto se procura um lead. Buscar um
+ * nome não pode zerar o painel inteiro.
+ */
+let LEADS_BUSCA = '';
+
+const semAcento = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const soDigitos = (s) => String(s || '').replace(/\D/g, '');
+
+/** Casa por nome (sem acento nem caixa) ou por telefone (só dígitos). */
+function casaBusca(r, termo){
+  if(!termo) return true;
+  if(semAcento(r.nome).includes(semAcento(termo))) return true;
+  const d = soDigitos(termo);
+  return d.length > 0 && soDigitos(r.telefone).includes(d);
+}
+
 function renderLeadsTable(data){
   const tbody = document.querySelector('#leads-table tbody');
   const info = document.getElementById('table-info');
   const status = document.getElementById('page-status');
   const prev = document.getElementById('page-prev');
   const next = document.getElementById('page-next');
+
+  const totalSemBusca = data.length;
+  if(LEADS_BUSCA) data = data.filter(r => casaBusca(r, LEADS_BUSCA));
 
   // ordena por data desc (mais recentes primeiro)
   const rows = [...data].sort((a,b)=>{
@@ -2049,7 +2337,9 @@ function renderLeadsTable(data){
   const slice = rows.slice(start, end);
 
   if(!total){
-    tbody.innerHTML = `<tr><td colspan="14"><div class="empty-state">Nenhum lead corresponde aos filtros aplicados.</div></td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="14"><div class="empty-state">${LEADS_BUSCA
+      ? 'Nenhum lead com &quot;' + esc(LEADS_BUSCA) + '&quot; no nome ou no telefone, dentro dos filtros aplicados.'
+      : 'Nenhum lead corresponde aos filtros aplicados.'}</div></td></tr>`;
     info.textContent = '0 leads';
     status.textContent = '0 / 0';
     prev.disabled = true; next.disabled = true;
@@ -2088,7 +2378,9 @@ function renderLeadsTable(data){
     `;
   }).join('');
 
-  info.textContent = `${fmtNum(start+1)}–${fmtNum(end)} de ${fmtNum(total)} leads`;
+  info.textContent = LEADS_BUSCA
+    ? `${fmtNum(start+1)}–${fmtNum(end)} de ${fmtNum(total)} encontrados (${fmtNum(totalSemBusca)} no recorte)`
+    : `${fmtNum(start+1)}–${fmtNum(end)} de ${fmtNum(total)} leads`;
   status.textContent = `${TABLE_PAGE} / ${pageCount}`;
   prev.disabled = TABLE_PAGE <= 1;
   next.disabled = TABLE_PAGE >= pageCount;
@@ -2109,7 +2401,7 @@ function wireTablePager(){
 }
 
 function applyFilter(id, value){
-  const map = {'f-camp':'camp','f-tag':'tag','f-stage':'stage','f-source':'source','f-pipeline':'pipeline'};
+  const map = {'f-camp':'camp','f-tag':'tag','f-stage':'stage','f-source':'source','f-pipeline':'pipeline','f-motivo':'motivo'};
   const key = map[id];
   if(!key || !MS[key]) return;
   MS[key].toggle(value); // toggle fires onChange => render
@@ -2230,6 +2522,51 @@ class MultiSelect{
   }
 }
 
+/**
+ * Quantos leads entraram por mídia paga e voltaram por canal orgânico.
+ *
+ * É a informação que o último toque descarta: o anúncio pagou pelo lead, mas
+ * como ele retornou pelo Manychat (ou por outro canal sem atribuição), a
+ * origem passa a ser Orgânica. Sem esta linha o número de Orgânico parece
+ * grande demais e ninguém sabe de onde veio.
+ *
+ * Só faz sentido no regime novo: antes do corte a origem é decidida por um
+ * híbrido das duas atribuições, então não há "entrou por um e voltou por
+ * outro" para medir.
+ */
+function pagoQueVoltouOrganico(data, brutosPorLinha){
+  const ehPago = (o) => o === 'Anúncio' || o === 'Formulário';
+  let n = 0;
+  for(const r of data){
+    /* Conta só o que ESTÁ contado como Orgânico no card ao lado. Sem isso a
+       nota somaria linhas que já aparecem como pagas e o número não amarraria
+       com nada na tela. */
+    if(r.source !== 'Orgânico') continue;
+    const b = brutosPorLinha.get(r);
+    if(!b) continue;
+    const dt = String(b.dt_criacao_oportunidade || '');
+    if(!dt || dt < CORTE_ATRIBUICAO) continue;
+
+    /* Exige as DUAS atribuições preenchidas. Com o `last` vazio não há
+       evidência de retorno por canal orgânico — há ausência de dado, que é
+       coisa diferente e não cabe nesta contagem. São outros ~101 leads,
+       pagos na origem e sem nada registrado depois. */
+    if(!String(b.first_atribution_medium || '').trim()) continue;
+    if(!String(b.last_atribution_medium || '').trim()) continue;
+
+    const porFirst = classifySource({
+      medium: b.first_atribution_medium, campanha: b.first_atribution_campaign,
+      conteudo: b.first_atribution_content, campanhaParaForms: b.first_atribution_campaign,
+    });
+    const porLast = classifySource({
+      medium: b.last_atribution_medium, campanha: b.last_atribution_campaign,
+      conteudo: b.last_atribution_content, campanhaParaForms: b.last_atribution_campaign,
+    });
+    if(ehPago(porFirst) && porLast === 'Orgânico') n++;
+  }
+  return n;
+}
+
 function renderOriginSummary(data, dataB){
   const grid = document.getElementById('origin-grid');
   grid.innerHTML = '';
@@ -2264,6 +2601,17 @@ function renderOriginSummary(data, dataB){
     card.title = 'Filtrar por origem: ' + s;
     card.addEventListener('click', ()=> applyFilter('f-source', s));
     grid.appendChild(card);
+  }
+
+  const nota = document.getElementById('nota-retorno');
+  const voltaram = pagoQueVoltouOrganico(data, BRUTOS_POR_LINHA);
+  if(voltaram){
+    nota.style.display = '';
+    nota.innerHTML = 'Dos leads acima contados como Orgânico, <b>' + fmtNum(voltaram) + '</b> entraram por mídia paga e ' +
+      'retornaram por um canal orgânico (Manychat, link da bio, formulário próprio). ' +
+      'A origem segue o último caminho de entrada, então o anúncio que os trouxe não aparece no custo por lead.';
+  } else {
+    nota.style.display = 'none';
   }
 }
 
@@ -2667,6 +3015,145 @@ function renderFunnel(data, dataB){
   note.style.cssText = 'margin-top:14px;font-size:11px;color:var(--dim);line-height:1.5';
   note.textContent = 'Funil cumulativo — leads em estágios mais avançados também contam nas etapas anteriores.';
   wrap.appendChild(note);
+}
+
+/* ---------- MOTIVOS DE PERDA ----------
+   Conta só status 'lost'. As oportunidades 'abandoned' não entram (não têm
+   motivo e não são perda declarada), e as poucas 'open' que ainda carregam
+   um motivo antigo também não — não estão perdidas.
+*/
+const SEM_MOTIVO = 'Sem motivo registrado';
+const MOTIVOS_POR_PAGINA = 10;
+
+let MOTIVOS_TAB = 'ativos';   // 'ativos' | 'todos'
+let MOTIVOS_PAGE = 1;
+
+/**
+ * Agrupa as perdas por motivo.
+ *
+ * `somenteAtivos` deixa passar só os grupos que ainda existem no CRM — um
+ * grupo conta como existente se pelo menos um dos motivos que ele junta
+ * estiver cadastrado hoje. "Sem motivo registrado" nunca entra nesse
+ * recorte: não é um motivo do CRM.
+ */
+function lossByReason(rows, somenteAtivos){
+  const m = new Map();
+  let total = 0;
+  for(const r of rows){
+    if(r.status !== 'lost') continue;
+    const k = r.motivo || SEM_MOTIVO;
+    if(somenteAtivos && !r.motivoAtivo) continue;
+    total++;
+    m.set(k, (m.get(k)||0) + 1);
+  }
+  return { total, lista: [...m].sort((a,b) => b[1]-a[1]) };
+}
+
+function renderLossReasons(data, dataB){
+  const wrap = document.getElementById('motivos');
+  const hint = document.getElementById('motivos-hint');
+  const foot = document.getElementById('motivos-foot');
+  wrap.innerHTML = '';
+
+  const soAtivos = MOTIVOS_TAB === 'ativos';
+  const { total, lista } = lossByReason(data, soAtivos);
+  const B = dataB ? lossByReason(dataB, soAtivos) : null;
+  const mapaB = B ? new Map(B.lista) : null;
+
+  if(!total){
+    hint.textContent = '—';
+    foot.style.display = 'none';
+    wrap.innerHTML = '<div class="empty-state">' + (soAtivos
+      ? 'Nenhuma perda com motivo ainda cadastrado no CRM neste recorte.'
+      : 'Nenhuma oportunidade perdida no recorte.') + '</div>';
+    return;
+  }
+
+  const qtdMotivos = lista.filter(([k]) => k !== SEM_MOTIVO).length;
+  const totalPerdas = data.filter(r => r.status === 'lost').length;
+  hint.textContent = fmtNum(total) +
+    (soAtivos ? ' de ' + fmtNum(totalPerdas) + ' perdas' : ' oportunidades perdidas') +
+    ' · ' + qtdMotivos + (qtdMotivos === 1 ? ' motivo' : ' motivos');
+
+  /* Paginação só faz sentido quando a lista passa de uma página. A regra é o
+     tamanho da lista, e não a aba: as duas se comportam igual. */
+  const paginas = Math.max(1, Math.ceil(lista.length / MOTIVOS_POR_PAGINA));
+  if(MOTIVOS_PAGE > paginas) MOTIVOS_PAGE = paginas;
+  const paginando = lista.length > MOTIVOS_POR_PAGINA;
+  const inicio = paginando ? (MOTIVOS_PAGE - 1) * MOTIVOS_POR_PAGINA : 0;
+  const pagina = paginando ? lista.slice(inicio, inicio + MOTIVOS_POR_PAGINA) : lista;
+
+  // barra proporcional ao maior da LISTA toda, não só da página, senão a
+  // escala mudaria a cada virada de página
+  const maior = lista[0][1];
+
+  for(const [motivo, n] of pagina){
+    const semMotivo = motivo === SEM_MOTIVO;
+    const pctTotal = (n / total) * 100;
+    // barra proporcional ao maior motivo, senão os pequenos somem
+    const largura = (n / maior) * 100;
+    const bVal = mapaB ? (mapaB.get(motivo) || 0) : 0;
+
+    const row = document.createElement('div');
+    row.className = 'funnel-row';
+    row.innerHTML = `
+      <div class="name"${semMotivo ? ' style="color:var(--dim)"' : ''}>${esc(motivo)}</div>
+      <div class="track">
+        <span class="seg" style="width:${Math.max(largura,0)}%;background:${semMotivo ? '#3A3A3A' : '#C0392B'}">
+          <span class="seg-label">${pctTotal.toFixed(1).replace('.',',')}%</span>
+        </span>
+      </div>
+      <div class="val">${fmtNum(n)}${dataB ? `<span class="cmp-b">B: ${fmtNum(bVal)}${deltaHtml(n, bVal, false)}</span>` : ''}</div>
+    `;
+    if(!semMotivo){
+      row.title = 'Filtrar por motivo: ' + motivo;
+      row.addEventListener('click', ()=> applyFilter('f-motivo', motivo));
+    } else {
+      row.style.cursor = 'default';
+    }
+    wrap.appendChild(row);
+  }
+
+  const note = document.createElement('div');
+  note.style.cssText = 'margin-top:14px;font-size:11px;color:var(--dim);line-height:1.5';
+  note.textContent = soAtivos
+    ? 'Só os motivos ainda cadastrados no CRM. Percentual sobre as perdas desta aba. Clique para filtrar a página.'
+    : 'Inclui motivos já apagados do CRM. Percentual sobre o total de perdas do recorte. Clique para filtrar a página.';
+  wrap.appendChild(note);
+
+  foot.style.display = paginando ? '' : 'none';
+  if(paginando){
+    document.getElementById('motivos-info').textContent =
+      'Mostrando ' + (inicio + 1) + '–' + (inicio + pagina.length) + ' de ' + lista.length + ' motivos';
+    document.getElementById('motivos-status').textContent = MOTIVOS_PAGE + ' / ' + paginas;
+    document.getElementById('motivos-prev').disabled = MOTIVOS_PAGE <= 1;
+    document.getElementById('motivos-next').disabled = MOTIVOS_PAGE >= paginas;
+  }
+}
+
+/** Abas e paginação do painel de motivos. Ligado uma vez, no bootstrap. */
+function wireMotivos(){
+  const toggle = document.getElementById('motivos-toggle');
+  if(toggle && !toggle.dataset.wired){
+    toggle.dataset.wired = '1';
+    toggle.addEventListener('click', (e)=>{
+      const btn = e.target.closest('button[data-tab]');
+      if(!btn || btn.classList.contains('active')) return;
+      MOTIVOS_TAB = btn.dataset.tab;
+      MOTIVOS_PAGE = 1;   // a outra aba tem outra lista; página 3 pode não existir
+      toggle.querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+      renderLossReasons(getFiltered(), CMP_ON ? getFiltered('B') : null);
+    });
+  }
+
+  const passo = (d) => {
+    MOTIVOS_PAGE = Math.max(1, MOTIVOS_PAGE + d);
+    renderLossReasons(getFiltered(), CMP_ON ? getFiltered('B') : null);
+  };
+  const prev = document.getElementById('motivos-prev');
+  const next = document.getElementById('motivos-next');
+  if(prev && !prev.dataset.wired){ prev.dataset.wired = '1'; prev.addEventListener('click', ()=> passo(-1)); }
+  if(next && !next.dataset.wired){ next.dataset.wired = '1'; next.addEventListener('click', ()=> passo(1)); }
 }
 
 /* ---------- TABLE (legacy, não usada) ----------
