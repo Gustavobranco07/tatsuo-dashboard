@@ -1236,7 +1236,13 @@ const SOURCE_ICON  = { 'Anúncio':'◆', 'Formulário':'◉', 'Orgânico':'◈' 
 
 /* Mediums de formulário que, SEM campanha e SEM conteúdo, não têm mídia paga
    por trás — são leads orgânicos. Com campanha seguem as regras normais, ou
-   seja, um `survey` com campanha [FORMS] continua sendo Formulário. */
+   seja, um `survey` com campanha [FORMS] continua sendo Formulário.
+
+   O `survey` é a pesquisa da página de inscrição, e responde por 1.036 dos
+   leads reclassificados de Anúncio para Orgânico. O Gabriel confirmou que
+   esse tráfego é orgânico mesmo — não é mídia paga que perdeu a UTM. Fica
+   escrito porque é a maior mudança que esta lista provoca, e sem a origem
+   confirmada alguém pode desfazê-la achando que foi engano. */
 const MEDIUMS_SEM_MIDIA = new Set(['survey', 'external form', 'form']);
 
 /* A partir desta data a automação passou a gravar first E last corretamente,
