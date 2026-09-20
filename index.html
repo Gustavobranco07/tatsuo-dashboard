@@ -185,6 +185,33 @@
   /* painéis da dupla têm alturas bem diferentes (8 faixas de porte contra 4
      de faturamento); sem isto o menor estica e sobra uma caixa vazia */
   #aba-perfil .two-col{align-items:start}
+  /* grade dos números de entrada: 4 por linha, com as divisórias entre as
+     células vindo de borda, como no cartão que serviu de referência */
+  .grade-entrada{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid var(--border);border-radius:10px;overflow:hidden}
+  .cel-entrada{padding:18px 18px 16px;border-right:1px solid var(--border);border-bottom:1px solid var(--border)}
+  .cel-entrada:nth-child(4n){border-right:none}
+  .cel-entrada:nth-last-child(-n+4){border-bottom:none}
+  .cel-entrada .valor{font-family:'Bebas Neue',sans-serif;font-size:38px;line-height:1;display:flex;align-items:baseline;gap:8px}
+  .cel-entrada .valor .pct{font-family:'Outfit',sans-serif;font-size:12px;font-weight:600;color:var(--dim);letter-spacing:.02em}
+  .cel-entrada .leg{margin-top:8px;font-size:12px;color:var(--muted);line-height:1.45}
+
+  /* o par select+busca é uma unidade: ou cabe na linha do título, ou desce
+     inteiro. Deixar os dois quebrarem entre si empilha um sobre o outro no
+     meio do cabeçalho e fica parecendo desalinhamento. */
+  .controles-tabela{display:flex;align-items:center;gap:10px;margin-left:auto;flex-wrap:nowrap}
+  .sel-pessoa{background:var(--bg-2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:12px;cursor:pointer;max-width:200px}
+  .sel-pessoa:focus{outline:none;border-color:var(--accent)}
+  .busca-time{min-width:200px}
+  /* o hint cede espaço antes dos controles */
+  #tabela-sdr .panel-head .hint,#tabela-closer .panel-head .hint{flex:0 1 auto;min-width:0}
+  .tabela-leads-time{min-width:1100px}
+  .tabela-leads-time thead th{position:sticky;top:0;background:#181818;z-index:1;white-space:nowrap}
+  .tabela-leads-time tbody td{font-size:12.5px;color:var(--text);white-space:nowrap}
+  .tabela-leads-time tbody td.wrap{white-space:normal;max-width:200px;line-height:1.4}
+  .tabela-leads-time tbody td.dim{color:var(--muted)}
+  .tabela-leads-time tbody td .lead-name{font-weight:500;color:#fff}
+  .tabela-leads-time tbody td .phone{font-variant-numeric:tabular-nums;font-family:'Outfit',sans-serif}
+  #tabela-sdr .panel-head,#tabela-closer .panel-head{padding:16px 18px 0}
   .chip-dia{display:inline-flex;align-items:center;gap:7px;background:rgba(192,57,43,.14);border:1px solid rgba(192,57,43,.45);color:#E86A5B;border-radius:7px;padding:5px 11px;font-family:inherit;font-size:11.5px;letter-spacing:.06em;cursor:pointer;margin-left:auto}
   .chip-dia:hover{background:rgba(192,57,43,.24)}
   .chip-dia .x{font-size:15px;line-height:1;opacity:.75}
@@ -417,6 +444,13 @@
     .section-head .desc{text-align:left}
     /* as colunas fixas do perfil (200px de rótulo) viram min-content do grid
        e empurram a página para fora da tela no celular */
+    .grade-entrada{grid-template-columns:repeat(2,1fr)}
+    .cel-entrada:nth-child(4n){border-right:1px solid var(--border)}
+    .cel-entrada:nth-child(2n){border-right:none}
+    .cel-entrada:nth-last-child(-n+4){border-bottom:1px solid var(--border)}
+    .cel-entrada:nth-last-child(-n+2){border-bottom:none}
+    .controles-tabela{margin-left:0;width:100%;flex-wrap:wrap}
+    .sel-pessoa,.busca-time{width:100%;max-width:none;min-width:0}
     #aba-perfil .panel{min-width:0}
     #aba-perfil .funnel-row{grid-template-columns:108px 1fr 54px;gap:10px}
     #aba-perfil .funnel-row .name{font-size:11px;overflow-wrap:anywhere}
@@ -1659,6 +1693,9 @@ function loadData(){
             /* Movimentação, para as abas de time: `dtMudancaEtapa` mede há
                quanto tempo o card está parado; `dtMudancaStatus` fecha o
                ciclo de quem ganhou ou perdeu. */
+            /* Data de criação do CONTATO, separada da oportunidade: é o que
+               distingue lead novo de contato que já existia e reentrou. */
+            dtContato: parseDate(r.dt_criacao_contato),
             dtMudancaEtapa: parseDateTime(r.dt_ultima_mudanca_estagio),
             dtMudancaStatus: parseDateTime(r.dt_ultima_mudanca_status),
             status: (r.status||'').trim(),
@@ -2609,6 +2646,242 @@ function resumoTime(data, itens, rotulo, rotuloSingular){
     </div>`;
 }
 
+/* =========================================================
+   ENTRADA DO PERÍODO — o retrato de quantos leads chegaram
+
+   Responde "quanto entrou e o que aconteceu com isso", sempre dentro do
+   período escolhido no filtro. Lead novo é aquele cujo CONTATO também foi
+   criado dentro do recorte; o resto é contato que já existia e voltou.
+========================================================= */
+
+/**
+ * Classifica a linha entre lead novo e contato que reentrou.
+ *
+ * Sem período no filtro não existe "dentro do recorte" para comparar, então
+ * o critério vira o mesmo dia: contato e oportunidade criados na mesma data.
+ * Com o período padrão do dashboard isso nunca acontece, mas o filtro pode
+ * ser limpo.
+ */
+function ehLeadNovo(r, inicio, fim){
+  if(!r.dtContato) return false;
+  if(inicio || fim){
+    if(inicio && r.dtContato < inicio) return false;
+    if(fim && r.dtContato > fim) return false;
+    return true;
+  }
+  return !!r.dt && r.dtContato.toDateString() === r.dt.toDateString();
+}
+
+function statsEntrada(data){
+  const { start, end } = getFilters();
+  const novos = data.filter(r => ehLeadNovo(r, start, end)).length;
+  const porTag = {};
+  for(const t of TAG_ORDER) porTag[t] = data.filter(r => r.tag === t).length;
+  return {
+    total: data.length,
+    novos,
+    reentraram: data.length - novos,
+    perdidas: data.filter(r => r.status === 'lost').length,
+    abertas: data.filter(r => r.status === 'open').length,
+    ganhas: data.filter(r => ganhou(r)).length,
+    porTag,
+  };
+}
+
+/** Um número grande com legenda, no formato dos cartões do bloco de entrada. */
+function celulaEntrada(valor, legenda, cor, pct){
+  return `
+    <div class="cel-entrada">
+      <div class="valor" ${cor ? `style="color:${cor}"` : ''}>${fmtNum(valor)}${
+        pct !== undefined ? `<span class="pct">${pct}</span>` : ''}</div>
+      <div class="leg">${legenda}</div>
+    </div>`;
+}
+
+function painelEntrada(data){
+  const e = statsEntrada(data);
+  const pct = (n) => e.total ? (n / e.total * 100).toFixed(1).replace('.', ',') + '%' : '—';
+  return `
+    <div class="grade-entrada">
+      ${celulaEntrada(e.total, 'Oportunidades criadas no período', '#fff')}
+      ${celulaEntrada(e.novos, 'Leads novos (contato criado no período)', '#3AA56B', pct(e.novos))}
+      ${celulaEntrada(e.reentraram, 'Contatos que já existiam e reentraram', '#8A9AAB', pct(e.reentraram))}
+      ${celulaEntrada(e.perdidas, 'Já perdidas dentro do período', '#E86A5B', pct(e.perdidas))}
+      ${celulaEntrada(e.porTag['Q-MQL'], 'Q-MQL (quentes)', TAG_COLOR['Q-MQL'], pct(e.porTag['Q-MQL']))}
+      ${celulaEntrada(e.porTag['MQL'], 'MQL', TAG_COLOR['MQL'], pct(e.porTag['MQL']))}
+      ${celulaEntrada(e.porTag['N-MQL'], 'N-MQL', TAG_COLOR['N-MQL'], pct(e.porTag['N-MQL']))}
+      ${celulaEntrada(e.abertas, 'Em aberto', '#fff', pct(e.abertas))}
+    </div>
+    <div class="nota-perfil" style="margin-top:12px">
+      Lead novo é aquele cujo contato também foi criado dentro do período. A leitura depende da
+      largura do recorte: num intervalo longo quase tudo conta como novo, porque o contato cabe
+      dentro dele. Para separar entrada nova de recontato, use janelas curtas — um dia, uma semana.
+    </div>`;
+}
+
+/* =========================================================
+   TABELA DE LEADS DAS ABAS DE TIME
+
+   A tabela da aba de campanhas não serve aqui: os ids dela são fixos e
+   únicos na página, e esta precisa existir em duas abas com filtros
+   próprios. O estado fica por aba para que trocar de SDR não perca o que
+   estava digitado na busca do closer.
+========================================================= */
+
+const TABELA_TIME = {
+  sdr:    { pessoa: '', busca: '', pagina: 1 },
+  closer: { pessoa: '', busca: '', pagina: 1 },
+};
+const TABELA_TIME_TAM = 20;
+
+/** Linhas da aba depois do filtro de pessoa e da busca. */
+function linhasTabelaTime(data, aba){
+  const st = TABELA_TIME[aba];
+  let linhas = data;
+  if(st.pessoa) linhas = linhas.filter(r => String(r[aba] || '').trim() === st.pessoa);
+  if(st.busca) linhas = linhas.filter(r => casaBusca(r, st.busca));
+  return [...linhas].sort((a, b) => (b.dt ? b.dt.getTime() : 0) - (a.dt ? a.dt.getTime() : 0));
+}
+
+/**
+ * Casca da tabela: select de pessoa, busca, cabeçalho e paginador.
+ *
+ * Escrita só quando a aba inteira é redesenhada. Digitar na busca repinta
+ * apenas o corpo — reescrever a casca a cada tecla tiraria o foco do campo.
+ */
+function renderTabelaTime(data, aba){
+  const alvo = document.getElementById('tabela-' + aba);
+  if(!alvo) return;
+  const st = TABELA_TIME[aba];
+  const rotulo = aba === 'sdr' ? 'SDR' : 'Closer';
+
+  const pessoas = [...new Set(data.map(r => String(r[aba] || '').trim()).filter(Boolean))].sort();
+  /* Uma pessoa selecionada que sumiu do recorte continua na lista, senão o
+     select se esvazia sozinho e o filtro parece ter sido ignorado. */
+  if(st.pessoa && !pessoas.includes(st.pessoa)) pessoas.unshift(st.pessoa);
+
+  alvo.innerHTML = `
+    <div class="panel-head">
+      <h3>Leads detalhados</h3>
+      <div class="hint">20 por página, dentro dos filtros da página</div>
+      <div class="controles-tabela">
+        <select class="sel-pessoa" data-aba="${aba}">
+          <option value="">Todos os ${rotulo === 'SDR' ? 'SDRs' : 'closers'}</option>
+          ${pessoas.map(p => `<option value="${esc(p)}"${p === st.pessoa ? ' selected' : ''}>${esc(p)}</option>`).join('')}
+        </select>
+        <input type="search" class="busca busca-time" data-aba="${aba}" placeholder="Buscar por nome ou telefone"
+               autocomplete="off" value="${esc(st.busca)}">
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table class="tabela-leads-time">
+        <thead><tr>
+          <th>Nome do lead</th><th>Telefone</th><th>SDR</th><th>Closer</th>
+          <th>Funil</th><th>Etapa</th><th>Classificação</th><th>Status</th>
+          <th>Motivo da perda</th><th>Criação</th>
+        </tr></thead>
+        <tbody></tbody>
+      </table>
+    </div>
+    <div class="table-foot">
+      <div class="table-info">—</div>
+      <div class="table-pager">
+        <button type="button" data-pag="prev">‹ Anterior</button>
+        <span class="page-status">1 / 1</span>
+        <button type="button" data-pag="next">Próximo ›</button>
+      </div>
+    </div>`;
+
+  preencherTabelaTime(data, aba);
+}
+
+const STATUS_ROTULO = { open: 'Em aberto', won: 'Ganho', lost: 'Perdido', abandoned: 'Abandonado' };
+const STATUS_COR = { open: '#E8C547', won: '#3AA56B', lost: '#E86A5B', abandoned: '#8A9AAB' };
+
+/** Só o corpo e o rodapé — a casca, e o foco da busca, ficam de pé. */
+function preencherTabelaTime(data, aba){
+  const alvo = document.getElementById('tabela-' + aba);
+  if(!alvo) return;
+  const st = TABELA_TIME[aba];
+  const tbody = alvo.querySelector('tbody');
+  const info = alvo.querySelector('.table-info');
+  const status = alvo.querySelector('.page-status');
+  const prev = alvo.querySelector('[data-pag="prev"]');
+  const next = alvo.querySelector('[data-pag="next"]');
+
+  const linhas = linhasTabelaTime(data, aba);
+  const total = linhas.length;
+  const paginas = Math.max(1, Math.ceil(total / TABELA_TIME_TAM));
+  st.pagina = Math.min(Math.max(st.pagina, 1), paginas);
+  const de = (st.pagina - 1) * TABELA_TIME_TAM;
+  const ate = Math.min(de + TABELA_TIME_TAM, total);
+
+  if(!total){
+    tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state">Nenhum lead com os filtros aplicados.</div></td></tr>`;
+    info.textContent = '0 leads';
+    status.textContent = '0 / 0';
+    prev.disabled = true; next.disabled = true;
+    return;
+  }
+
+  tbody.innerHTML = linhas.slice(de, ate).map(r => {
+    const corEtapa = STAGE_COLOR[r.stageView] || '#5A6B7A';
+    const tagCel = TAG_ORDER.includes(r.tag)
+      ? `<span class="stage-chip"><span class="dot" style="background:${TAG_COLOR[r.tag]}"></span>${esc(r.tag)}</span>`
+      : '<span class="dim">—</span>';
+    const vazio = '<span class="dim">—</span>';
+    return `
+      <tr>
+        <td><span class="lead-name">${esc(r.nome) || '—'}</span></td>
+        <td><span class="phone">${esc(fmtPhone(r.telefone)) || vazio}</span></td>
+        <td>${esc(r.sdr) || vazio}</td>
+        <td>${esc(r.closer) || vazio}</td>
+        <td>${esc(r.pipeline) || vazio}</td>
+        <td><span class="stage-chip"><span class="dot" style="background:${corEtapa}"></span>${esc(r.stage) || '—'}</span></td>
+        <td>${tagCel}</td>
+        <td><span class="stage-chip"><span class="dot" style="background:${STATUS_COR[r.status] || '#5A6B7A'}"></span>${
+          STATUS_ROTULO[r.status] || esc(r.status) || '—'}</span></td>
+        <td class="wrap">${r.status === 'lost' ? (esc(r.motivo) || vazio) : vazio}</td>
+        <td class="dim">${fmtDateBR(r.dt)}</td>
+      </tr>`;
+  }).join('');
+
+  const recorte = st.pessoa || st.busca ? ` (${fmtNum(data.length)} no recorte)` : '';
+  info.textContent = `${fmtNum(de + 1)}–${fmtNum(ate)} de ${fmtNum(total)} leads${recorte}`;
+  status.textContent = `${st.pagina} / ${paginas}`;
+  prev.disabled = st.pagina <= 1;
+  next.disabled = st.pagina >= paginas;
+}
+
+/* Delegação no container da aba, que nunca é substituído. */
+function wireTabelaTime(aba){
+  const raiz = document.getElementById('aba-' + aba);
+  if(!raiz || raiz.dataset.wiredTabela) return;
+  raiz.dataset.wiredTabela = '1';
+  const repintar = () => preencherTabelaTime(getFiltered(), aba);
+
+  raiz.addEventListener('change', (e) => {
+    const sel = e.target.closest('.sel-pessoa');
+    if(!sel) return;
+    TABELA_TIME[aba].pessoa = sel.value;
+    TABELA_TIME[aba].pagina = 1;
+    repintar();
+  });
+  raiz.addEventListener('input', (e) => {
+    const campo = e.target.closest('.busca-time');
+    if(!campo) return;
+    TABELA_TIME[aba].busca = campo.value.trim();
+    TABELA_TIME[aba].pagina = 1;
+    repintar();
+  });
+  raiz.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-pag]');
+    if(!btn || btn.disabled) return;
+    TABELA_TIME[aba].pagina += btn.dataset.pag === 'next' ? 1 : -1;
+    repintar();
+  });
+}
+
 function renderSDR(data){
   const alvo = document.getElementById('aba-sdr');
   const itens = statsPorPessoa(data, 'sdr');
@@ -2627,6 +2900,9 @@ function renderSDR(data){
       </div>
 
       ${resumoTime(data, itens, 'SDRs', 'SDR')}
+
+      <div style="height:18px"></div>
+      ${painel('Entrada do período', 'Tudo dentro do intervalo de datas selecionado no filtro', painelEntrada(data))}
 
       <div style="height:18px"></div>
       ${painel('Conversão por SDR', 'Ordenado por volume de leads recebidos', tabelaTime(itens, 'SDR'))}
@@ -2658,7 +2934,24 @@ function renderSDR(data){
         </div>
       </div>
       ${painel('Motivos de perda por SDR', '', tabelaMotivosPorPessoa(itens))}
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <div class="label">Bloco 04 — Lista de leads</div>
+          <h2>LEADS POR SDR</h2>
+        </div>
+        <div class="desc">
+          Os mesmos leads dos blocos acima, um a um. O seletor filtra por SDR sem mexer nos
+          filtros da página, então dá para isolar uma pessoa e voltar sem perder o recorte.
+        </div>
+      </div>
+      <div class="panel" style="padding:0;overflow:hidden" id="tabela-sdr"></div>
     </section>`;
+
+  renderTabelaTime(data, 'sdr');
+  wireTabelaTime('sdr');
 }
 
 function renderCloser(data){
@@ -2705,7 +2998,24 @@ function renderCloser(data){
              Nenhuma oportunidade com closer preenchido neste recorte.
              O campo começou a ser usado em 31/08/2026 — amplie o período para ver os primeiros casos.
            </div>`}
+    </section>
+
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <div class="label">Bloco 02 — Lista de leads</div>
+          <h2>LEADS POR CLOSER</h2>
+        </div>
+        <div class="desc">
+          A tabela lista todos os leads do recorte, com ou sem closer. O seletor filtra por
+          closer sem mexer nos filtros da página.
+        </div>
+      </div>
+      <div class="panel" style="padding:0;overflow:hidden" id="tabela-closer"></div>
     </section>`;
+
+  renderTabelaTime(data, 'closer');
+  wireTabelaTime('closer');
 }
 
 /* Abas. Chart.js mede o container na criação, e num container escondido isso
