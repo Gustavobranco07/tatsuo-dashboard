@@ -194,6 +194,12 @@
   .cel-entrada .valor{font-family:'Bebas Neue',sans-serif;font-size:38px;line-height:1;display:flex;align-items:baseline;gap:8px}
   .cel-entrada .valor .pct{font-family:'Outfit',sans-serif;font-size:12px;font-weight:600;color:var(--dim);letter-spacing:.02em}
   .cel-entrada .leg{margin-top:8px;font-size:12px;color:var(--muted);line-height:1.45}
+  /* os três cartões de tag são botões: herdam o visual da célula e ganham
+     só o retorno de clique e o estado de filtro ativo */
+  button.cel-entrada{font-family:inherit;text-align:left;background:none;cursor:pointer;transition:background .15s,box-shadow .15s}
+  button.cel-entrada:hover{background:rgba(255,255,255,.035)}
+  button.cel-entrada.ativa{background:rgba(192,57,43,.12);box-shadow:inset 3px 0 0 var(--primary)}
+  button.cel-entrada.ativa .leg{color:var(--text)}
 
   /* o par select+busca é uma unidade: ou cabe na linha do título, ou desce
      inteiro. Deixar os dois quebrarem entre si empilha um sobre o outro no
@@ -2688,28 +2694,37 @@ function statsEntrada(data){
   };
 }
 
-/** Um número grande com legenda, no formato dos cartões do bloco de entrada. */
-function celulaEntrada(valor, legenda, cor, pct){
-  return `
-    <div class="cel-entrada">
-      <div class="valor" ${cor ? `style="color:${cor}"` : ''}>${fmtNum(valor)}${
-        pct !== undefined ? `<span class="pct">${pct}</span>` : ''}</div>
-      <div class="leg">${legenda}</div>
-    </div>`;
+/**
+ * Um número grande com legenda, no formato dos cartões do bloco de entrada.
+ *
+ * Com `tag`, a célula vira botão e alterna o filtro de tag da página — o
+ * mesmo `applyFilter` que o gráfico de tags da aba de campanhas usa, para
+ * clicar aqui e no gráfico ter exatamente o mesmo efeito.
+ */
+function celulaEntrada(valor, legenda, cor, pct, tag, ativa){
+  const corpo = `
+    <div class="valor" ${cor ? `style="color:${cor}"` : ''}>${fmtNum(valor)}${
+      pct !== undefined ? `<span class="pct">${pct}</span>` : ''}</div>
+    <div class="leg">${legenda}</div>`;
+  if(!tag) return `<div class="cel-entrada">${corpo}</div>`;
+  return `<button type="button" class="cel-entrada cel-filtro${ativa ? ' ativa' : ''}"
+    data-tag-entrada="${esc(tag)}" title="${ativa ? 'Remover' : 'Aplicar'} o filtro de ${esc(tag)} na página inteira"
+    >${corpo}</button>`;
 }
 
 function painelEntrada(data){
   const e = statsEntrada(data);
   const pct = (n) => e.total ? (n / e.total * 100).toFixed(1).replace('.', ',') + '%' : '—';
+  const selecionadas = getFilters().tag;
   return `
     <div class="grade-entrada">
       ${celulaEntrada(e.total, 'Oportunidades criadas no período', '#fff')}
       ${celulaEntrada(e.novos, 'Leads novos (contato criado no período)', '#3AA56B', pct(e.novos))}
       ${celulaEntrada(e.reentraram, 'Contatos que já existiam e reentraram', '#8A9AAB', pct(e.reentraram))}
       ${celulaEntrada(e.perdidas, 'Já perdidas dentro do período', '#E86A5B', pct(e.perdidas))}
-      ${celulaEntrada(e.porTag['Q-MQL'], 'Q-MQL (quentes)', TAG_COLOR['Q-MQL'], pct(e.porTag['Q-MQL']))}
-      ${celulaEntrada(e.porTag['MQL'], 'MQL', TAG_COLOR['MQL'], pct(e.porTag['MQL']))}
-      ${celulaEntrada(e.porTag['N-MQL'], 'N-MQL', TAG_COLOR['N-MQL'], pct(e.porTag['N-MQL']))}
+      ${/* TAG_ORDER já é MQL, Q-MQL, N-MQL — a mesma ordem do resto do painel */''}
+      ${TAG_ORDER.map(t => celulaEntrada(e.porTag[t], t === 'Q-MQL' ? 'Q-MQL (quentes)' : t,
+        TAG_COLOR[t], pct(e.porTag[t]), t, selecionadas.has(t))).join('')}
       ${celulaEntrada(e.abertas, 'Em aberto', '#fff', pct(e.abertas))}
     </div>
     <div class="nota-perfil" style="margin-top:12px">
@@ -2882,6 +2897,18 @@ function wireTabelaTime(aba){
   });
 }
 
+/* Cartões de tag do bloco de entrada, por delegação no container da aba. */
+function wireEntrada(){
+  const raiz = document.getElementById('aba-sdr');
+  if(!raiz || raiz.dataset.wiredEntrada) return;
+  raiz.dataset.wiredEntrada = '1';
+  raiz.addEventListener('click', (ev) => {
+    const btn = ev.target.closest('[data-tag-entrada]');
+    if(!btn) return;
+    applyFilter('f-tag', btn.dataset.tagEntrada);   // dispara o render da página
+  });
+}
+
 function renderSDR(data){
   const alvo = document.getElementById('aba-sdr');
   const itens = statsPorPessoa(data, 'sdr');
@@ -2952,6 +2979,7 @@ function renderSDR(data){
 
   renderTabelaTime(data, 'sdr');
   wireTabelaTime('sdr');
+  wireEntrada();
 }
 
 function renderCloser(data){
