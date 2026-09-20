@@ -185,6 +185,11 @@
   /* painéis da dupla têm alturas bem diferentes (8 faixas de porte contra 4
      de faturamento); sem isto o menor estica e sobra uma caixa vazia */
   #aba-perfil .two-col{align-items:start}
+  .chip-dia{display:inline-flex;align-items:center;gap:7px;background:rgba(192,57,43,.14);border:1px solid rgba(192,57,43,.45);color:#E86A5B;border-radius:7px;padding:5px 11px;font-family:inherit;font-size:11.5px;letter-spacing:.06em;cursor:pointer;margin-left:auto}
+  .chip-dia:hover{background:rgba(192,57,43,.24)}
+  .chip-dia .x{font-size:15px;line-height:1;opacity:.75}
+  /* com o chip presente, quem empurra o toggle para a direita é ele */
+  .chip-dia + .level-toggle{margin-left:10px}
   .aviso-dado{background:rgba(232,197,71,.07);border:1px solid rgba(232,197,71,.28);border-radius:10px;padding:14px 16px;font-size:12.5px;line-height:1.6;color:var(--muted);margin-bottom:18px}
   .aviso-dado b{color:#E8C547}
   .dim-pct{color:var(--dim);font-weight:600;font-size:11px;margin-left:4px}
@@ -908,22 +913,44 @@ function faixaPorte(txt){
    corta em R$ 1 mi. Tudo vai para anual em 4 faixas amplas; a aproximação
    chega a 20% nas bordas, o que com 285 respostas é melhor do que fatiar em
    células de 5 leads. Chave = resposta normalizada (minúscula, sem acento). */
-const FATURAMENTO_ORDEM = ['Até R$ 1 mi/ano', 'R$ 1 a 5 mi/ano', 'R$ 5 a 50 mi/ano', 'Acima de R$ 50 mi/ano'];
+/* As faixas seguem os CORTES DO FORMULÁRIO QUE ESTÁ VIVO, que é o mensal:
+   1,2 / 3,6 / 12 milhões por ano. Conviveram duas grades, de dois produtos
+   diferentes — a mensal é do "Funil de Vendas - Diagnóstico" (52 dos 61
+   respondentes), a anual é das Imersões MBV (141 dos 181 vieram da Imersão
+   de Dez/2025). A anual parou: a última resposta acima de 5 mi é de
+   19/04/2026, enquanto a mensal foi usada até 19/09/2026.
+
+   Cortar em 5-10 / 10-20 / 20-50, como se chegou a pensar, não é possível
+   sem mexer no formulário: nenhuma opção de resposta tem fronteira nesses
+   pontos, e a maior delas é literalmente "entre 5 e 50 milhões". */
+const FATURAMENTO_ORDEM = ['Até R$ 1,2 mi/ano', 'R$ 1,2 a 3,6 mi/ano',
+                           'R$ 3,6 a 12 mi/ano', 'Acima de R$ 12 mi/ano'];
+
+/* Três encaixes aqui são aproximação, e nenhum se reconstrói lendo o mapa:
+
+   - "Entre R$ 1 e R$ 5 milhões/ano" (107 leads, a maior resposta da base)
+     atravessa duas faixas. Vai para 1,2-3,6 porque 60% do intervalo fica
+     abaixo de 3,6. É a maior aproximação do conjunto, e vem toda da
+     Imersão MBV, funil encerrado.
+   - "Entre R$ 5 e R$ 50 milhões/ano" (21) vai para acima de 12: 84% do
+     intervalo está acima desse corte.
+   - "Acima de R$ 50 milhões/ano" (5) também vai para acima de 12, perdendo
+     a distinção do topo — a grade viva não tem corte em 50 para preservar. */
 const FATURAMENTO_MAPA = {
-  'menos de r 1 milhao ano': 'Até R$ 1 mi/ano',
-  'ate r 100 mil mes': 'Até R$ 1 mi/ano',                       // até 1,2 mi/ano
+  'menos de r 1 milhao ano': 'Até R$ 1,2 mi/ano',               // 0 a 1 mi
+  'ate r 100 mil mes': 'Até R$ 1,2 mi/ano',                     // 0 a 1,2 mi
 
-  'entre r 1 milhao e r 5 milhoes ano': 'R$ 1 a 5 mi/ano',
-  'entre r 1 milhao a r 5 milhoes ano': 'R$ 1 a 5 mi/ano',
-  'entre r 100 mil e r 300 mil mes': 'R$ 1 a 5 mi/ano',         // 1,2 a 3,6 mi/ano
+  'entre r 100 mil e r 300 mil mes': 'R$ 1,2 a 3,6 mi/ano',     // exato
+  'entre r 1 milhao e r 5 milhoes ano': 'R$ 1,2 a 3,6 mi/ano',  // 1 a 5 mi
+  'entre r 1 milhao a r 5 milhoes ano': 'R$ 1,2 a 3,6 mi/ano',
 
-  'entre r 5 milhoes e r 50 milhoes ano': 'R$ 5 a 50 mi/ano',
-  'entre r 5 milhoes a r 15 milhoes ano': 'R$ 5 a 50 mi/ano',
-  'entre r 15 milhoes a r 50 milhoes ano': 'R$ 5 a 50 mi/ano',
-  'entre r 300 mil e r 1 milhao mes': 'R$ 5 a 50 mi/ano',       // 3,6 a 12 mi/ano
-  'acima de r 1 milhao mes': 'R$ 5 a 50 mi/ano',                // acima de 12 mi/ano
+  'entre r 300 mil e r 1 milhao mes': 'R$ 3,6 a 12 mi/ano',     // exato
+  'entre r 5 milhoes a r 15 milhoes ano': 'R$ 3,6 a 12 mi/ano', // 5 a 15 mi
 
-  'acima de r 50 milhoes ano': 'Acima de R$ 50 mi/ano',
+  'acima de r 1 milhao mes': 'Acima de R$ 12 mi/ano',           // exato
+  'entre r 5 milhoes e r 50 milhoes ano': 'Acima de R$ 12 mi/ano',
+  'entre r 15 milhoes a r 50 milhoes ano': 'Acima de R$ 12 mi/ano',
+  'acima de r 50 milhoes ano': 'Acima de R$ 12 mi/ano',
 };
 
 /* Respostas que não são faixa ("não informado", um valor solto de
@@ -2149,7 +2176,8 @@ function renderPerfil(data){
         ${painel('Porte da empresa', fmtNum(comPorte) + ' respostas', barrasDistribuicao(porte,
           'A faixa "1 a 9" vem de uma grade de resposta mais ampla, usada em parte dos formulários. Não é somável com "1 a 5" e "5 a 9".'))}
         ${painel('Faturamento anual', fmtNum(comFat) + ' respostas', barrasDistribuicao(fat,
-          'Respostas mensais foram convertidas para anual e encaixadas na faixa mais próxima.'))}
+          'As faixas seguem os cortes do formulário em uso (respostas mensais, convertidas para anual). ' +
+          'Respostas da grade anterior, usada nas Imersões MBV, foram encaixadas na faixa mais próxima.'))}
       </div>
 
       <div class="two-col" style="margin-top:18px">
@@ -2159,13 +2187,7 @@ function renderPerfil(data){
         ${painel('Melhor período para contato', fmtNum(per.reduce((a, x) => a + x.leads, 0)) + ' respostas', barrasDistribuicao(per))}
       </div>
 
-      <div class="panel" style="margin-top:18px">
-        <div class="panel-head">
-          <h3>Horário de entrada do lead</h3>
-          <div class="hint">Pela hora de criação da oportunidade</div>
-        </div>
-        <div class="chart-wrap" id="chart-hora-wrap"><canvas id="chart-hora"></canvas></div>
-      </div>
+      <div class="panel" id="panel-hora" style="margin-top:18px"></div>
     </section>
 
     <section class="section">
@@ -2190,36 +2212,160 @@ function renderPerfil(data){
         tabelaConversao(fat, true))}
     </section>`;
 
-  renderGraficoHora(data);
+  renderPainelHora(data);
+  wirePainelHora();
 }
 
-/** Distribuição por hora do dia. 24 barras, uma por hora. */
-function renderGraficoHora(data){
-  const wrap = document.getElementById('chart-hora-wrap');
-  if(!wrap) return;
-  wrap.innerHTML = '<canvas id="chart-hora"></canvas>';
+/* =========================================================
+   HORÁRIO DE ENTRADA — três níveis no mesmo painel
 
-  const horas = new Array(24).fill(0);
-  let semHora = 0;
-  for(const r of data){
-    if(r.dtHora) horas[r.dtHora.getHours()]++;
-    else semHora++;
+   `dtHora` é montada pelo parseDateTime a partir das partes da string, e
+   não por `new Date(iso)`: getHours() e getDay() devolvem a hora de São
+   Paulo independente do fuso de quem abre o dashboard.
+
+   Não confundir com o painel "Melhor período para contato", logo acima:
+   aquele é a preferência que o lead declarou no formulário, este é a hora
+   em que a oportunidade foi criada de fato.
+========================================================= */
+
+/* Domingo por último: a semana comercial começa na segunda, e o índice
+   é o que getDay() devolve. */
+const DIAS_SEMANA = [
+  { dia: 1, curto: 'Seg', longo: 'Segunda-feira' },
+  { dia: 2, curto: 'Ter', longo: 'Terça-feira' },
+  { dia: 3, curto: 'Qua', longo: 'Quarta-feira' },
+  { dia: 4, curto: 'Qui', longo: 'Quinta-feira' },
+  { dia: 5, curto: 'Sex', longo: 'Sexta-feira' },
+  { dia: 6, curto: 'Sáb', longo: 'Sábado' },
+  { dia: 0, curto: 'Dom', longo: 'Domingo' },
+];
+
+const FAIXAS_HORA = ['06h-12h', '13h-18h', '19h-22h', '23h-05h'];
+
+/** A última faixa atravessa a meia-noite, então não dá para comparar só de/até. */
+function faixaDaHora(h){
+  if(h >= 6 && h <= 12) return '06h-12h';
+  if(h >= 13 && h <= 18) return '13h-18h';
+  if(h >= 19 && h <= 22) return '19h-22h';
+  return '23h-05h';
+}
+
+let PERFIL_HORA_NIVEL = 'hora';   // 'hora' | 'faixa' | 'dia'
+let PERFIL_HORA_DIA = null;       // null, ou 0-6 como em getDay()
+
+/**
+ * Painel inteiro do horário: cabeçalho, chip do dia, toggle e gráfico.
+ *
+ * Fica separado de renderPerfil porque aquela função reescreve o innerHTML
+ * da aba toda — trocar de nível redesenha só este painel, sem derrubar os
+ * outros gráficos.
+ */
+function renderPainelHora(data){
+  const painelHora = document.getElementById('panel-hora');
+  if(!painelHora) return;
+
+  /* Destruir ANTES de mexer no innerHTML. Na ordem inversa o canvas sai do
+     DOM primeiro, e o destroy roda sobre uma instância já desconectada:
+     sobram listeners apontando para internos que viraram undefined, e o
+     próximo evento estoura com "Cannot read properties of undefined
+     (reading 'handleEvent')". */
+  if(charts.hora){ charts.hora.destroy(); charts.hora = null; }
+
+  const diaEscolhido = PERFIL_HORA_DIA === null ? null
+    : DIAS_SEMANA.find(d => d.dia === PERFIL_HORA_DIA);
+  const recorte = diaEscolhido
+    ? data.filter(r => r.dtHora && r.dtHora.getDay() === diaEscolhido.dia)
+    : data;
+
+  const niveis = [
+    { id: 'hora', rotulo: 'Hora' },
+    { id: 'faixa', rotulo: 'Faixa' },
+    { id: 'dia', rotulo: 'Dia da semana' },
+  ];
+
+  painelHora.innerHTML = `
+    <div class="panel-head">
+      <h3>Horário de entrada do lead</h3>
+      <div class="hint">
+        Hora em que a oportunidade foi criada — não é o período que o lead pediu para ser contatado
+        ${diaEscolhido ? ' · ' + fmtNum(recorte.length) + ' leads' : ''}
+      </div>
+      ${diaEscolhido
+        ? `<button type="button" class="chip-dia" data-limpar-dia>${diaEscolhido.longo}<span class="x">×</span></button>`
+        : ''}
+      <div class="level-toggle" id="hora-toggle">
+        ${niveis.map(n => `<button type="button" data-nivel="${n.id}"${
+          n.id === PERFIL_HORA_NIVEL ? ' class="active"' : ''}>${n.rotulo}</button>`).join('')}
+      </div>
+    </div>
+    <div class="chart-wrap" id="chart-hora-wrap"><canvas id="chart-hora"></canvas></div>`;
+
+  renderGraficoHora(recorte);
+}
+
+function renderGraficoHora(data){
+  const canvas = document.getElementById('chart-hora');
+  if(!canvas) return;
+
+  let rotulos, valores;
+  if(PERFIL_HORA_NIVEL === 'faixa'){
+    const m = new Map(FAIXAS_HORA.map(f => [f, 0]));
+    for(const r of data){ if(r.dtHora) m.set(faixaDaHora(r.dtHora.getHours()), m.get(faixaDaHora(r.dtHora.getHours())) + 1); }
+    rotulos = FAIXAS_HORA;
+    valores = FAIXAS_HORA.map(f => m.get(f));
+  }else if(PERFIL_HORA_NIVEL === 'dia'){
+    const m = new Array(7).fill(0);
+    for(const r of data){ if(r.dtHora) m[r.dtHora.getDay()]++; }
+    rotulos = DIAS_SEMANA.map(d => d.curto);
+    valores = DIAS_SEMANA.map(d => m[d.dia]);
+  }else{
+    const horas = new Array(24).fill(0);
+    for(const r of data){ if(r.dtHora) horas[r.dtHora.getHours()]++; }
+    rotulos = horas.map((_, h) => String(h).padStart(2, '0') + 'h');
+    valores = horas;
   }
 
-  if(charts.hora) charts.hora.destroy();
-  charts.hora = new Chart(document.getElementById('chart-hora'), {
+  const total = valores.reduce((a, b) => a + b, 0);
+  const podeClicar = PERFIL_HORA_NIVEL === 'dia';
+
+  charts.hora = new Chart(canvas, {
     type: 'bar',
     data: {
-      labels: horas.map((_, h) => String(h).padStart(2, '0') + 'h'),
-      datasets: [{ label: 'Leads', data: horas, backgroundColor: '#C0392B', borderRadius: 4, maxBarThickness: 26 }],
+      labels: rotulos,
+      datasets: [{
+        label: 'Leads', data: valores, backgroundColor: '#C0392B',
+        borderRadius: 4, maxBarThickness: PERFIL_HORA_NIVEL === 'hora' ? 26 : 64,
+      }],
     },
     options: {
       responsive: true, maintainAspectRatio: false,
+      /* Só o nível de dia tem para onde descer.
+
+         O redesenho sai do handler por setTimeout: renderPainelHora destrói
+         este mesmo gráfico, e o Chart.js ainda está no meio do despacho do
+         evento — destruir ali derruba o dispatcher com
+         "Cannot read properties of undefined (reading 'handleEvent')". */
+      onClick: podeClicar ? (evt, els, chart) => {
+        const pts = chart.getElementsAtEventForMode(evt, 'index', { axis: 'x', intersect: false }, false);
+        if(!pts || !pts.length) return;
+        PERFIL_HORA_DIA = DIAS_SEMANA[pts[0].index].dia;
+        PERFIL_HORA_NIVEL = 'hora';
+        setTimeout(() => renderPainelHora(getFiltered()), 0);
+      } : null,
+      onHover: (e, els) => {
+        e.native.target.style.cursor = (podeClicar && els && els.length) ? 'pointer' : 'default';
+      },
       plugins: {
         legend: { display: false },
         tooltip: {
           backgroundColor: '#181818', borderColor: '#2A2A2A', borderWidth: 1, padding: 12,
-          callbacks: { label: (c) => ' ' + fmtNum(c.parsed.y) + ' leads' },
+          callbacks: {
+            label: (c) => ' ' + fmtNum(c.parsed.y) + ' leads' +
+              (total ? ' · ' + (c.parsed.y / total * 100).toFixed(1).replace('.', ',') + '%' : ''),
+            footer: () => podeClicar ? 'Clique para ver as horas deste dia' : '',
+          },
+          footerColor: '#A0A0A0',
+          footerFont: { family: 'Outfit', size: 11, weight: 'normal' },
         },
       },
       scales: {
@@ -2227,6 +2373,24 @@ function renderGraficoHora(data){
         y: { grid: { color: 'rgba(255,255,255,.04)' }, ticks: { color: '#A0A0A0', font: { family: 'Outfit' } } },
       },
     },
+  });
+}
+
+/* Delegação em #aba-perfil, que nunca é substituído — o painel interno é. */
+function wirePainelHora(){
+  const aba = document.getElementById('aba-perfil');
+  if(!aba || aba.dataset.wiredHora) return;
+  aba.dataset.wiredHora = '1';
+  aba.addEventListener('click', (e) => {
+    const limpar = e.target.closest('[data-limpar-dia]');
+    if(limpar){ PERFIL_HORA_DIA = null; renderPainelHora(getFiltered()); return; }
+    const btn = e.target.closest('#hora-toggle button[data-nivel]');
+    if(!btn || btn.classList.contains('active')) return;
+    PERFIL_HORA_NIVEL = btn.dataset.nivel;
+    /* Escolher "dia da semana" com um dia já fixo não faz sentido: seria um
+       gráfico de uma barra só. Volta para a semana inteira. */
+    if(PERFIL_HORA_NIVEL === 'dia') PERFIL_HORA_DIA = null;
+    renderPainelHora(getFiltered());
   });
 }
 
