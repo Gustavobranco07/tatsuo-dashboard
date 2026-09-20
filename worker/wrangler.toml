@@ -5,7 +5,7 @@ compatibility_date = "2026-09-01"
 # Origens que podem chamar este Worker. Ajustar para a URL real do Pages
 # antes do deploy (ex.: "https://gabriel.github.io").
 [vars]
-ALLOWED_ORIGINS = "https://SEU-USUARIO.github.io"
+ALLOWED_ORIGINS = "https://gustavobranco07.github.io"
 
 # Sem cron: quem coleta e o workflow sync-ghl do GitHub Actions, que grava
 # direto no KV. O Worker so le.
@@ -15,7 +15,7 @@ ALLOWED_ORIGINS = "https://SEU-USUARIO.github.io"
 # e colar o id devolvido abaixo.
 [[kv_namespaces]]
 binding = "DASH_CACHE"
-id = "PREENCHER_APOS_CRIAR_O_NAMESPACE"
+id = "fdffea000da24d24a2d1c02962932bc5"
 
 # Secret (NAO vai neste arquivo). Cadastrar com:
 #   npx wrangler secret put DASH_PASSWORD

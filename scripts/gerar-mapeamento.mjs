@@ -38,7 +38,7 @@ const DO_OBJETO = [
   ['fonte_oportunidade', 'opportunity.source'],
   ['tags', 'contact.tags'],
   ['motivo_perda', 'opportunity.lostReasonId, traduzido por /opportunities/lost-reason'],
-  ['closer_id', 'opportunity.assignedTo'],
+  ['sdr_id', 'opportunity.assignedTo'],
   ['dt_ultima_mudanca_estagio', 'opportunity.lastStageChangeAt'],
   ['dt_ultima_mudanca_status', 'opportunity.lastStatusChangeAt'],
 ];

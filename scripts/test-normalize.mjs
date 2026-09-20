@@ -140,9 +140,14 @@ check('faturamento', row.faturamento, 'R$ 500.000');
 
 console.log('\ncampo de oportunidade vence o de contato');
 check('perfil_do_lead pega o da oportunidade (Ouro, nao Prata)', row.perfil_do_lead, 'Ouro');
-check('closer pega o custom field, nao o assignedTo', row.closer, 'Pedro Henrique');
+check('closer vem do custom field', row.closer, 'Pedro Henrique');
+check('sdr vem do assignedTo, e nao do custom field de closer', row.sdr, 'Fulano Atribuido');
 const semCloserCf = buildRow({ ...oportunidade, customFields: [] }, ctx);
-check('sem custom field, closer cai para o usuario atribuido', semCloserCf.closer, 'Fulano Atribuido');
+/* Sem o custom field o closer fica vazio DE PROPOSITO. Se caisse para o
+   assignedTo, todo SDR viraria closer de si mesmo e a aba de closers mediria
+   o time inteiro em vez dos poucos casos reais. */
+check('sem custom field, closer fica vazio (nao cai para o assignedTo)', semCloserCf.closer, '');
+check('sem custom field, o sdr continua vindo do assignedTo', semCloserCf.sdr, 'Fulano Atribuido');
 check('sem campo de oportunidade, perfil cai para o do contato', semCloserCf.perfil_do_lead, 'Prata');
 
 console.log('\ncolisao de nomes: 3 campos de funcionarios');
@@ -203,6 +208,7 @@ check('oportunidade sem contato nao quebra', semContato.id_contato, 'inexistente
 check('estagio desconhecido vira vazio', semContato.estagio_pipeline, '');
 check('valor ausente vira 0', semContato.valor, 0);
 check('closer sem nada vira vazio', semContato.closer, '');
+check('sdr sem assignedTo vira vazio', semContato.sdr, '');
 
 console.log('\nmotivos de perda: API + historico');
 {
