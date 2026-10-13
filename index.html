@@ -580,10 +580,10 @@
       <!-- ABAS -->
       <div class="abas" id="abas">
         <button type="button" data-aba="campanhas" class="active">Campanhas</button>
+        <button type="button" data-aba="diario">Dia a dia</button>
         <button type="button" data-aba="perfil">Perfil do lead</button>
         <button type="button" data-aba="sdr">SDR</button>
         <button type="button" data-aba="closer">Closer</button>
-        <button type="button" data-aba="diario">Dia a dia</button>
       </div>
 
       <!-- FILTERS -->
@@ -3354,7 +3354,7 @@ function renderCloser(data){
    dá zero — então a aba só desenha quando fica visível. */
 let ABA_ATIVA = 'campanhas';
 
-const ABAS = ['campanhas', 'perfil', 'sdr', 'closer', 'diario'];
+const ABAS = ['campanhas', 'diario', 'perfil', 'sdr', 'closer'];
 
 const CABECALHOS = {
   campanhas: {
