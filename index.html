@@ -218,6 +218,41 @@
   .tabela-leads-time tbody td .lead-name{font-weight:500;color:#fff}
   .tabela-leads-time tbody td .phone{font-variant-numeric:tabular-nums;font-family:'Outfit',sans-serif}
   #tabela-sdr .panel-head,#tabela-closer .panel-head{padding:16px 18px 0}
+  /* ---------- ABA DIA A DIA ---------- */
+  .tabela-diaria{border-collapse:separate;border-spacing:0}
+  .tabela-diaria th,.tabela-diaria td{white-space:nowrap}
+  /* o grid tem 50 linhas por 30 colunas: sem o cabeçalho preso em cima, a
+     partir da terceira linha já não dá para saber de que dia é a célula.
+     Para o sticky vertical funcionar, o .table-wrap precisa de altura — se
+     ele crescer à vontade, quem rola é a página e o topo acompanha. */
+  #aba-diario .table-wrap{max-height:72vh;overflow-y:auto}
+  .tabela-diaria thead th{position:sticky;top:0;z-index:3;background:#181818}
+  .tabela-diaria th.stick,.tabela-diaria td.stick{position:sticky;z-index:2;background:var(--card)}
+  .tabela-diaria thead th.stick{z-index:5;background:#181818}
+  .tabela-diaria .stick-c1{left:0;min-width:180px;max-width:180px}
+  .tabela-diaria .stick-c2{left:180px;min-width:190px;max-width:190px}
+  .tabela-diaria .stick-c3{left:370px;min-width:132px;box-shadow:1px 0 0 var(--border)}
+  .tabela-diaria td.wrap{white-space:normal;line-height:1.35;font-size:12px;vertical-align:top;padding-top:12px}
+  .tabela-diaria td.metrica{font-size:11.5px;color:var(--muted);letter-spacing:.04em}
+  .tabela-diaria td.metrica .ponto{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:7px;vertical-align:middle}
+  .tabela-diaria th.dia{text-align:center;padding:8px 6px;min-width:44px}
+  .tabela-diaria th.dia .dia-num{display:block;font-size:11px;color:var(--text)}
+  .tabela-diaria th.dia .dia-sem{display:block;font-size:9.5px;color:var(--dim);text-transform:uppercase;letter-spacing:.06em;margin-top:2px}
+  .tabela-diaria td.dia{text-align:center;padding:7px 6px;font-size:12px;font-variant-numeric:tabular-nums}
+  .tabela-diaria td.dia.vazio{color:#3A3A3A}
+  .tabela-diaria .total-janela{font-weight:600;border-left:1px solid var(--border);padding-left:12px;padding-right:14px}
+  /* a divisoria grossa separa um criativo do proximo; dentro do bloco as
+     cinco linhas ficam coladas, para lerem como uma coisa so */
+  .tabela-diaria tbody tr.inicio-bloco td{border-top:2px solid var(--border)}
+  .tabela-diaria tbody tr:not(.inicio-bloco) td{border-top:none}
+
+  .nav-janela{display:flex;align-items:center;gap:10px;margin-left:auto}
+  .nav-janela button{background:var(--bg-2);border:1px solid var(--border);color:var(--text);padding:7px 13px;border-radius:7px;font-family:inherit;font-size:12px;cursor:pointer;transition:border-color .15s,color .15s}
+  .nav-janela button:hover:not(:disabled){border-color:var(--accent);color:var(--accent)}
+  .nav-janela button:disabled{opacity:.35;cursor:not-allowed}
+  .nav-janela .intervalo{font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums;min-width:160px;text-align:center}
+  #aba-diario .panel-head{padding:16px 18px 0}
+
   .chip-dia{display:inline-flex;align-items:center;gap:7px;background:rgba(192,57,43,.14);border:1px solid rgba(192,57,43,.45);color:#E86A5B;border-radius:7px;padding:5px 11px;font-family:inherit;font-size:11.5px;letter-spacing:.06em;cursor:pointer;margin-left:auto}
   .chip-dia:hover{background:rgba(192,57,43,.24)}
   .chip-dia .x{font-size:15px;line-height:1;opacity:.75}
@@ -456,6 +491,17 @@
     .cel-entrada:nth-last-child(-n+4){border-bottom:1px solid var(--border)}
     .cel-entrada:nth-last-child(-n+2){border-bottom:none}
     .controles-tabela{margin-left:0;width:100%;flex-wrap:wrap}
+    /* no celular as tres colunas presas comeriam a tela inteira. Campanha e
+       criativo rolam junto com os dias; so o rotulo da metrica fica preso,
+       senao ao rolar para a direita nao se sabe de que linha e o numero. */
+    .tabela-diaria .stick-c1,.tabela-diaria .stick-c2{position:static;min-width:92px;max-width:92px;font-size:11px}
+    .tabela-diaria .stick-c3{left:0;min-width:104px}
+    .tabela-diaria td.metrica{font-size:10.5px}
+    .tabela-diaria th.dia{min-width:38px;padding:8px 4px}
+    .tabela-diaria td.dia{padding:7px 4px;font-size:11.5px}
+    #aba-diario .table-wrap{max-height:none}
+    .nav-janela{margin-left:0;width:100%;justify-content:space-between}
+    .nav-janela .intervalo{min-width:0}
     .sel-pessoa,.busca-time{width:100%;max-width:none;min-width:0}
     #aba-perfil .panel{min-width:0}
     #aba-perfil .funnel-row{grid-template-columns:108px 1fr 54px;gap:10px}
@@ -537,6 +583,7 @@
         <button type="button" data-aba="perfil">Perfil do lead</button>
         <button type="button" data-aba="sdr">SDR</button>
         <button type="button" data-aba="closer">Closer</button>
+        <button type="button" data-aba="diario">Dia a dia</button>
       </div>
 
       <!-- FILTERS -->
@@ -790,6 +837,7 @@
       <div id="aba-perfil" hidden></div>
       <div id="aba-sdr" hidden></div>
       <div id="aba-closer" hidden></div>
+      <div id="aba-diario" hidden></div>
     </main>
   </div>
 
@@ -1799,8 +1847,14 @@ function bootstrap(){
 
   // listeners
   ['f-start','f-end'].forEach(id =>
-    document.getElementById(id).addEventListener('change', render));
+    document.getElementById(id).addEventListener('change', () => {
+      /* a janela da aba Dia a dia volta a acompanhar o filtro: manter o
+         fim antigo mostraria um trecho fora do periodo recem-escolhido */
+      DIA_FIM = null; DIARIO_PAGINA = 1;
+      render();
+    }));
   document.getElementById('clear-btn').addEventListener('click', ()=>{
+    DIA_FIM = null; DIARIO_PAGINA = 1;
     MS.camp.clear(); MS.tag.clear(); MS.stage.clear(); MS.source.clear(); MS.pipeline.clear(); MS.creative.clear();
     if(MS.tier) MS.tier.clear();
     if(MS.vert) MS.vert.clear();
@@ -2038,6 +2092,7 @@ function render(){
   if(ABA_ATIVA === 'perfil'){ renderPerfil(data); return; }
   if(ABA_ATIVA === 'sdr'){ renderSDR(data); return; }
   if(ABA_ATIVA === 'closer'){ renderCloser(data); return; }
+  if(ABA_ATIVA === 'diario'){ renderDiario(data); return; }
 
   renderSummary(data, dataB);
   renderKPIs(data, dataB);
@@ -2440,6 +2495,249 @@ function wirePainelHora(){
        gráfico de uma barra só. Volta para a semana inteira. */
     if(PERFIL_HORA_NIVEL === 'dia') PERFIL_HORA_DIA = null;
     renderPainelHora(getFiltered());
+  });
+}
+
+/* =========================================================
+   ABA DIA A DIA — leads por criativo, um dia por coluna
+
+   As outras abas respondem quanto cada criativo trouxe no periodo; esta
+   responde quando. Um criativo que trouxe 300 leads em tres dias e morreu
+   aparece igual a um que trouxe 10 por dia durante um mes, e sao decisoes
+   de midia opostas.
+========================================================= */
+
+const DIARIO_MAX_COLUNAS = 30;
+const DIARIO_POR_PAGINA = 10;      // 10 criativos = 50 linhas na tela
+
+let DIA_FIM = null;                // null = a janela acompanha o filtro
+let DIARIO_PAGINA = 1;
+
+/** Chave do dia a partir das partes locais.
+ *  toISOString desloca um dia em fuso positivo, e parseDate monta Date local. */
+function chaveDia(d){
+  if(!d) return '';
+  return d.getFullYear() + '-' +
+    String(d.getMonth() + 1).padStart(2, '0') + '-' +
+    String(d.getDate()).padStart(2, '0');
+}
+
+const soDia = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const somaDias = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const difDias = (a, b) => Math.round((soDia(b) - soDia(a)) / 86400000);
+
+/**
+ * Limites e janela visivel.
+ *
+ * Os limites sao o periodo do filtro; sem filtro, o intervalo real dos
+ * dados. Cabendo em 30 dias, a janela E o periodo inteiro e as setas somem.
+ * Passando disso, mostra 30 dias terminando em DIA_FIM.
+ */
+function janelaDiaria(){
+  const f = getFilters();
+  const datas = RAW.map(r => r.dt).filter(Boolean);
+  if(!datas.length) return null;
+
+  let limIni = f.start ? soDia(f.start) : soDia(new Date(Math.min(...datas)));
+  let limFim = f.end ? soDia(f.end) : soDia(new Date(Math.max(...datas)));
+  if(limFim < limIni) limFim = limIni;
+
+  const total = difDias(limIni, limFim) + 1;
+  if(total <= DIARIO_MAX_COLUNAS){
+    return { limIni, limFim, inicio: limIni, fim: limFim, total, navegavel: false };
+  }
+
+  let fim = DIA_FIM ? soDia(DIA_FIM) : limFim;
+  if(fim > limFim) fim = limFim;
+  let inicio = somaDias(fim, -(DIARIO_MAX_COLUNAS - 1));
+  if(inicio < limIni){ inicio = limIni; fim = somaDias(inicio, DIARIO_MAX_COLUNAS - 1); }
+  return { limIni, limFim, inicio, fim, total, navegavel: true };
+}
+
+/** Os dias da janela, em ordem. */
+function diasDaJanela(j){
+  const out = [];
+  for(let d = j.inicio; d <= j.fim; d = somaDias(d, 1)) out.push(d);
+  return out;
+}
+
+/* As cinco leituras de cada criativo. `cor` entra no fundo das celulas. */
+const DIARIO_METRICAS = [
+  { id: 'total', rotulo: 'Oportunidades', cor: '255,255,255', casa: () => true },
+  { id: 'qual',  rotulo: 'Qualificados',  cor: '58,165,107',  casa: (r) => r.tag === 'MQL' || r.tag === 'Q-MQL' },
+  { id: 'mql',   rotulo: 'MQL',           cor: '192,57,43',   casa: (r) => r.tag === 'MQL' },
+  { id: 'qmql',  rotulo: 'Q-MQL',         cor: '232,197,71',  casa: (r) => r.tag === 'Q-MQL' },
+  { id: 'nmql',  rotulo: 'N-MQL',         cor: '90,107,122',  casa: (r) => r.tag === 'N-MQL' },
+];
+
+/**
+ * Agrupa por campanha+criativo e, dentro, por dia.
+ *
+ * Mesmas chaves de creativeStats, para a linha daqui ser a mesma linha de
+ * la: `(sem campanha)` e `(sem criativo)` quando o campo vem vazio.
+ */
+function statsDiarios(data, j){
+  const chaves = diasDaJanela(j).map(chaveDia);
+  const indice = new Map(chaves.map((k, i) => [k, i]));
+  const mapa = new Map();
+
+  for(const r of data){
+    if(!r.dt) continue;
+    const i = indice.get(chaveDia(r.dt));
+    if(i === undefined) continue;          // fora da janela visivel
+    const campanha = (r.campaign || '').trim() || '(sem campanha)';
+    const criativo = (r.conteudo || '').trim() || '(sem criativo)';
+    const chave = campanha + '||' + criativo;
+    if(!mapa.has(chave)){
+      const linhas = {};
+      for(const m of DIARIO_METRICAS) linhas[m.id] = new Array(chaves.length).fill(0);
+      mapa.set(chave, { chave, campanha, criativo, linhas, totais: {} });
+    }
+    const e = mapa.get(chave);
+    for(const m of DIARIO_METRICAS) if(m.casa(r)) e.linhas[m.id][i]++;
+  }
+
+  const lista = [...mapa.values()];
+  for(const e of lista){
+    for(const m of DIARIO_METRICAS) e.totais[m.id] = e.linhas[m.id].reduce((a, b) => a + b, 0);
+  }
+  lista.sort((a, b) => b.totais.total - a.totais.total);
+  return lista;
+}
+
+/* fmtDateBR carrega a hora junto, e aqui a janela é só de data. */
+const fmtDiaBR = (d) => d ? d.toLocaleDateString('pt-BR') : '—';
+const fmtDiaCurto = (d) => String(d.getDate()).padStart(2, '0') + '/' +
+  String(d.getMonth() + 1).padStart(2, '0');
+const DIAS_CURTOS = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+
+function renderDiario(data){
+  const alvo = document.getElementById('aba-diario');
+  const j = janelaDiaria();
+  if(!j){
+    alvo.innerHTML = '<div class="empty-state">Sem dados carregados.</div>';
+    return;
+  }
+
+  const dias = diasDaJanela(j);
+  const lista = statsDiarios(data, j);
+  const paginas = Math.max(1, Math.ceil(lista.length / DIARIO_POR_PAGINA));
+  DIARIO_PAGINA = Math.min(Math.max(DIARIO_PAGINA, 1), paginas);
+  const de = (DIARIO_PAGINA - 1) * DIARIO_POR_PAGINA;
+  const pagina = lista.slice(de, de + DIARIO_POR_PAGINA);
+
+  /* A intensidade do fundo e por metrica e por pagina: comparar N-MQL com
+     Oportunidades na mesma escala apagaria tudo que nao e o total. */
+  const teto = {};
+  for(const m of DIARIO_METRICAS){
+    teto[m.id] = Math.max(1, ...pagina.flatMap(e => e.linhas[m.id]));
+  }
+
+  const soma = (id) => lista.reduce((a, e) => a + e.totais[id], 0);
+  /* MQL + Q-MQL + N-MQL nem sempre fecha com o total: existe lead com outra
+     tag (um "social selling" na janela de setembro). São poucos, mas quem
+     somar a coluna percebe, então a diferença aparece escrita. */
+  const semTag = soma('total') - soma('mql') - soma('qmql') - soma('nmql');
+
+  const corpo = pagina.map((e) => DIARIO_METRICAS.map((m, im) => `
+    <tr class="${im === 0 ? 'inicio-bloco' : ''}">
+      ${im === 0 ? `<td class="stick stick-c1 wrap" rowspan="5">${esc(e.campanha)}</td>
+                    <td class="stick stick-c2 wrap" rowspan="5">${esc(e.criativo)}</td>` : ''}
+      <td class="stick stick-c3 metrica"><span class="ponto" style="background:rgb(${m.cor})"></span>${m.rotulo}</td>
+      ${e.linhas[m.id].map((v) => v
+        ? `<td class="num dia" style="background:rgba(${m.cor},${(0.08 + 0.42 * v / teto[m.id]).toFixed(3)})">${fmtNum(v)}</td>`
+        : '<td class="num dia vazio">·</td>').join('')}
+      <td class="num total-janela">${fmtNum(e.totais[m.id])}</td>
+    </tr>`).join('')).join('');
+
+  const navegacao = j.navegavel ? `
+    <div class="nav-janela">
+      <button type="button" data-janela="ant" ${difDias(j.limIni, j.inicio) <= 0 ? 'disabled' : ''}>‹ 30 dias</button>
+      <span class="intervalo">${fmtDiaBR(j.inicio)} — ${fmtDiaBR(j.fim)}</span>
+      <button type="button" data-janela="prox" ${difDias(j.fim, j.limFim) <= 0 ? 'disabled' : ''}>30 dias ›</button>
+    </div>` : '';
+
+  alvo.innerHTML = `
+    <section class="section">
+      <div class="section-head">
+        <div>
+          <div class="label">Bloco 01 — Entrada diária</div>
+          <h2>LEADS POR CRIATIVO, DIA A DIA</h2>
+        </div>
+        <div class="desc">
+          Cada criativo ocupa cinco linhas: o total de oportunidades do dia, quantas foram
+          qualificadas e a quebra por MQL, Q-MQL e N-MQL.
+        </div>
+      </div>
+
+      <div class="panel" style="padding:0;overflow:hidden">
+        <div class="panel-head">
+          <h3>${fmtDiaBR(j.inicio)} a ${fmtDiaBR(j.fim)}</h3>
+          <div class="hint">
+            ${j.navegavel
+              ? 'O período filtrado tem ' + fmtNum(j.total) + ' dias; a tabela mostra ' +
+                fmtNum(dias.length) + ' por vez — use as setas para andar dentro dele.'
+              : fmtNum(dias.length) + (dias.length === 1 ? ' dia, exatamente o período filtrado'
+                                                          : ' dias, exatamente o período filtrado')}${
+            semTag > 0
+              ? ' · ' + plural(semTag, 'lead', 'leads') + ' sem tag de qualificação, que entra no total mas não nas três quebras'
+              : ''}
+          </div>
+          ${navegacao}
+        </div>
+        <div class="table-wrap">
+          <table class="tabela-diaria">
+            <thead>
+              <tr>
+                <th class="stick stick-c1">Campanha</th>
+                <th class="stick stick-c2">Criativo</th>
+                <th class="stick stick-c3"></th>
+                ${dias.map(d => `<th class="num dia"><span class="dia-num">${fmtDiaCurto(d)}</span><span class="dia-sem">${DIAS_CURTOS[d.getDay()]}</span></th>`).join('')}
+                <th class="num total-janela">Total</th>
+              </tr>
+            </thead>
+            <tbody>${lista.length ? corpo
+              : `<tr><td colspan="${dias.length + 4}"><div class="empty-state">Nenhum lead nesta janela, com os filtros aplicados.</div></td></tr>`}</tbody>
+          </table>
+        </div>
+        <div class="table-foot">
+          <div class="table-info">${lista.length
+            ? fmtNum(de + 1) + '–' + fmtNum(Math.min(de + DIARIO_POR_PAGINA, lista.length)) +
+              ' de ' + fmtNum(lista.length) + ' criativos · ' + fmtNum(soma('total')) +
+              ' oportunidades na janela, ' + fmtNum(soma('qual')) + ' qualificadas'
+            : '0 criativos'}</div>
+          <div class="table-pager">
+            <button type="button" data-pag-dia="prev" ${DIARIO_PAGINA <= 1 ? 'disabled' : ''}>‹ Anterior</button>
+            <span class="page-status">${DIARIO_PAGINA} / ${paginas}</span>
+            <button type="button" data-pag-dia="next" ${DIARIO_PAGINA >= paginas ? 'disabled' : ''}>Próximo ›</button>
+          </div>
+        </div>
+      </div>
+    </section>`;
+
+  wireDiario();
+}
+
+/* Delegacao no container da aba, que nunca e substituido. */
+function wireDiario(){
+  const raiz = document.getElementById('aba-diario');
+  if(!raiz || raiz.dataset.wired) return;
+  raiz.dataset.wired = '1';
+  raiz.addEventListener('click', (ev) => {
+    const seta = ev.target.closest('[data-janela]');
+    if(seta && !seta.disabled){
+      const j = janelaDiaria();
+      if(!j) return;
+      DIA_FIM = somaDias(j.fim, seta.dataset.janela === 'prox' ? DIARIO_MAX_COLUNAS : -DIARIO_MAX_COLUNAS);
+      DIARIO_PAGINA = 1;
+      renderDiario(getFiltered());
+      return;
+    }
+    const pag = ev.target.closest('[data-pag-dia]');
+    if(pag && !pag.disabled){
+      DIARIO_PAGINA += pag.dataset.pagDia === 'next' ? 1 : -1;
+      renderDiario(getFiltered());
+    }
   });
 }
 
@@ -3056,7 +3354,7 @@ function renderCloser(data){
    dá zero — então a aba só desenha quando fica visível. */
 let ABA_ATIVA = 'campanhas';
 
-const ABAS = ['campanhas', 'perfil', 'sdr', 'closer'];
+const ABAS = ['campanhas', 'perfil', 'sdr', 'closer', 'diario'];
 
 const CABECALHOS = {
   campanhas: {
@@ -3074,6 +3372,10 @@ const CABECALHOS = {
   closer: {
     titulo: 'PERFORMANCE DE <span class="accent">CLOSER</span>',
     desc: 'Fechamento a partir da apresentação, pelo custom field de closer. Campo novo: poucos registros ainda.',
+  },
+  diario: {
+    titulo: 'DIA A <span class="accent">DIA</span>',
+    desc: 'Quantos leads cada criativo trouxe em cada dia, com a quebra por qualificação — para ver quando um criativo acendeu e quando apagou.',
   },
 };
 
