@@ -725,7 +725,7 @@
             <div class="label">Bloco 03 — Performance de Criativos</div>
             <h2>PERFORMANCE POR CRIATIVO</h2>
           </div>
-          <div class="desc">Agrupado por <code>last_atribution_content</code>, com gasto real por anúncio (coluna <code>anuncio</code> da aba gasto_campanha). Respeita os filtros do topo. Sob cada tag, <b style="color:#E8C547">O</b> = ouro, <b style="color:#AEB8C2">P</b> = prata, <b style="color:#B0722F">B</b> = bronze.</div>
+          <div class="desc">Agrupado por <code>last_atribution_content</code> (criativo), <code>atribution_medium</code> (conjunto) ou campanha, com gasto real por anúncio (coluna <code>anuncio</code> da aba gasto_campanha). No nível de conjunto o gasto vem dos criativos, rateado pelos leads de cada um em cada conjunto. Respeita os filtros do topo. Sob cada tag, <b style="color:#E8C547">O</b> = ouro, <b style="color:#AEB8C2">P</b> = prata, <b style="color:#B0722F">B</b> = bronze.</div>
         </div>
         <div class="creative-kpis" id="creative-kpis"></div>
         <div class="goalbox">
@@ -736,6 +736,7 @@
           <span class="note">Define o status Escalar / Observar / Matar — recalcula ao vivo. CPL qualificado = investido ÷ (MQL + Q-MQL).</span>
           <div class="level-toggle" id="level-toggle" style="margin-left:10px">
             <button type="button" data-level="creative" class="active">Criativos</button>
+            <button type="button" data-level="adset">Conjuntos</button>
             <button type="button" data-level="campaign">Campanhas</button>
           </div>
         </div>
@@ -1396,6 +1397,10 @@ function definirOrigens(brutos){
       row.campaign = String(atrib.campanha || '').trim();
       row.conteudo = String(atrib.conteudo || '').trim();
     }
+    /* Conjunto de anúncios: o `medium` da UTM leva o nome do conjunto nos
+       anúncios pagos ({{adset.name}} no Meta). Sai do mesmo lado que a origem;
+       no regime antigo isso já é `last||first`, a mesma prioridade do criativo. */
+    row.conjunto = String(atrib.medium || '').trim();
 
     BRUTOS_POR_LINHA.set(row, brutos[i]);
   });
@@ -1741,6 +1746,7 @@ function loadData(){
             pipeline: (r.nome_pipeline || r.pipeline || r.Pipeline || '').trim(),
             // preenchido na segunda passada, em definirOrigens()
             source: '',
+            conjunto: '',
             campaign: (firstCamp || lastCamp || '').trim(),
             firstMed: String(firstMed).trim(),
             lastMed:  String(lastMed).trim(),
@@ -3410,30 +3416,49 @@ let CREATIVE_SORT = { key:'leads', dir:-1 };
 let CREATIVE_FILTER = null;
 let CREATIVE_PAGE = 1;
 const CREATIVE_PAGE_SIZE = 20;
-let CREATIVE_LEVEL = 'creative'; // 'creative' | 'campaign' — toggle de nível
+let CREATIVE_LEVEL = 'creative'; // 'creative' | 'adset' | 'campaign' — toggle de nível
+const LEVEL_NOME = {
+  creative: { um:'Criativo', muitos:'criativos' },
+  adset:    { um:'Conjunto', muitos:'conjuntos' },
+  campaign: { um:'Campanha', muitos:'campanhas' },
+};
 
 function creativeStats(data, period){
-  const byCampaign = CREATIVE_LEVEL === 'campaign';
-  const map = {};
+  if(CREATIVE_LEVEL === 'adset') return filterByAdStatus(adsetStats(data, period));
+  return filterByAdStatus(levelStats(data, period, CREATIVE_LEVEL));
+}
+
+function novoGrupo(key, creative, campaign){
+  return { key, creative, campaign, leads:0, mql:0, qmql:0, nmql:0, apres:0, agend:0, realiz:0, vendas:0, tiers:{'MQL':{},'Q-MQL':{},'N-MQL':{}}, byCamp:{} };
+}
+
+function somaLinha(m, r){
   const APRES_IDX = STAGE_ORDER.indexOf('Apresentação Agendada');
+  m.leads++;
+  if(r.tier && m.tiers[r.tag]) m.tiers[r.tag][r.tier] = (m.tiers[r.tag][r.tier]||0) + 1;
+  const mi = meetInfo(r);
+  if(mi.booked) m.agend++;
+  if(mi.held) m.realiz++;
+  if(r.tag==='MQL') m.mql++;
+  else if(r.tag==='Q-MQL') m.qmql++;
+  else if(r.tag==='N-MQL') m.nmql++;
+  const idx = STAGE_ORDER.indexOf(r.stageView);
+  if(idx !== -1 && APRES_IDX !== -1 && idx >= APRES_IDX) m.apres++;
+  if(r.stageView === 'Venda') m.vendas++;
+  if(r.campaign) m.byCamp[r.campaign] = (m.byCamp[r.campaign]||0) + 1;
+}
+
+/* Linhas de criativo (`creative`) ou de campanha (`campaign`), sem o filtro de
+   status — o nível de conjunto reaproveita a de criativos inteira. */
+function levelStats(data, period, level){
+  const byCampaign = level === 'campaign';
+  const map = {};
   for(const r of data){
     const camp = (r.campaign||'').trim() || '(sem campanha)';
     const cria = (r.conteudo||'').trim() || '(sem criativo)';
     const key = byCampaign ? camp : (camp + '||' + cria);
-    if(!map[key]) map[key] = { key, creative: byCampaign ? camp : cria, campaign: byCampaign ? '' : camp, leads:0, mql:0, qmql:0, nmql:0, apres:0, agend:0, realiz:0, vendas:0, tiers:{'MQL':{},'Q-MQL':{},'N-MQL':{}}, byCamp:{} };
-    const m = map[key];
-    m.leads++;
-    if(r.tier && m.tiers[r.tag]) m.tiers[r.tag][r.tier] = (m.tiers[r.tag][r.tier]||0) + 1;
-    const mi = meetInfo(r);
-    if(mi.booked) m.agend++;
-    if(mi.held) m.realiz++;
-    if(r.tag==='MQL') m.mql++;
-    else if(r.tag==='Q-MQL') m.qmql++;
-    else if(r.tag==='N-MQL') m.nmql++;
-    const idx = STAGE_ORDER.indexOf(r.stageView);
-    if(idx !== -1 && APRES_IDX !== -1 && idx >= APRES_IDX) m.apres++;
-    if(r.stageView === 'Venda') m.vendas++;
-    if(r.campaign) m.byCamp[r.campaign] = (m.byCamp[r.campaign]||0) + 1;
+    if(!map[key]) map[key] = novoGrupo(key, byCampaign ? camp : cria, byCampaign ? '' : camp);
+    somaLinha(map[key], r);
   }
   // ---- GASTO ----
   // 1º: gasto direto por anúncio (coluna `anuncio` da aba gasto_campanha,
@@ -3468,7 +3493,7 @@ function creativeStats(data, period){
       m.statusRank = m.status === 'ATIVO' ? 2 : (m.status === 'INATIVO' ? 1 : 0);
       finishCreativeMetrics(m, inv);
     }
-    return filterByAdStatus(list);
+    return list;
   }
   // 1ª passada: match exato campanha+anúncio; marca anúncios já consumidos
   for(const m of list){ m._inv = spendAd[m.key] || 0; if(m._inv && spendAdOnly[m.creative]) spendAdOnly[m.creative].used = true; }
@@ -3492,7 +3517,54 @@ function creativeStats(data, period){
     m.statusRank = m.status === 'ATIVO' ? 2 : (m.status === 'INATIVO' ? 1 : 0);
     finishCreativeMetrics(m, inv);
   }
-  return filterByAdStatus(list);
+  return list;
+}
+
+/* Conjunto de anúncios = campanha + `medium` da UTM.
+ *
+ * A aba gasto_campanha não tem coluna de conjunto, então o investimento é
+ * herdado dos criativos: cada criativo reparte o próprio gasto entre os
+ * conjuntos em que gerou leads, na proporção desses leads. Um criativo que
+ * roda num conjunto só leva o gasto inteiro para ele; o rateio só aparece
+ * quando o mesmo anúncio roda em mais de um conjunto da campanha.
+ *
+ * Status: ATIVO se algum criativo do conjunto está ativo.
+ */
+function adsetStats(data, period){
+  const criativos = {};
+  for(const c of levelStats(data, period, 'creative')) criativos[c.key] = c;
+
+  const map = {};
+  for(const r of data){
+    const camp = (r.campaign||'').trim() || '(sem campanha)';
+    const cria = (r.conteudo||'').trim() || '(sem criativo)';
+    const conj = (r.conjunto||'').trim() || '(sem conjunto)';
+    const key = camp + '||' + conj;
+    if(!map[key]){ map[key] = novoGrupo(key, conj, camp); map[key].byCria = {}; }
+    const m = map[key];
+    somaLinha(m, r);
+    const kc = camp + '||' + cria;
+    m.byCria[kc] = (m.byCria[kc]||0) + 1;
+  }
+
+  const list = Object.values(map);
+  for(const m of list){
+    let inv = 0, ativo = false, inativo = false;
+    m.spendDirect = false;
+    for(const kc in m.byCria){
+      const c = criativos[kc];
+      if(!c) continue;
+      if(c.leads) inv += c.invest * (m.byCria[kc] / c.leads);
+      if(c.spendDirect) m.spendDirect = true;
+      if(c.status === 'ATIVO') ativo = true;
+      else if(c.status === 'INATIVO') inativo = true;
+    }
+    m.invest = inv;
+    m.status = ativo ? 'ATIVO' : (inativo ? 'INATIVO' : '');
+    m.statusRank = m.status === 'ATIVO' ? 2 : (m.status === 'INATIVO' ? 1 : 0);
+    finishCreativeMetrics(m, inv);
+  }
+  return list;
 }
 
 function finishCreativeMetrics(m, inv){
@@ -3608,7 +3680,7 @@ function renderCreativesTable(list, listB){
     if(paginando){
       document.getElementById('creatives-info').textContent =
         'Mostrando ' + (inicio + 1) + '–' + (inicio + rows.length) + ' de ' + totalLinhas +
-        (CREATIVE_LEVEL === 'campaign' ? ' campanhas' : ' criativos');
+        ' ' + LEVEL_NOME[CREATIVE_LEVEL].muitos;
       document.getElementById('creatives-status').textContent = CREATIVE_PAGE + ' / ' + paginas;
       document.getElementById('creatives-prev').disabled = CREATIVE_PAGE <= 1;
       document.getElementById('creatives-next').disabled = CREATIVE_PAGE >= paginas;
@@ -3793,12 +3865,13 @@ function wireCreativeControls(){
       CREATIVE_FILTER = null;
       CREATIVE_PAGE = 1;   // a outra lista tem outro tamanho
       const isCamp = CREATIVE_LEVEL === 'campaign';
+      const nome = LEVEL_NOME[CREATIVE_LEVEL];
       const th = document.getElementById('th-level');
-      if(th) th.textContent = isCamp ? 'Campanha' : 'Criativo';
+      if(th) th.textContent = nome.um;
       const thc = document.getElementById('th-campanha');
       if(thc) thc.style.display = isCamp ? 'none' : '';
       const hint = document.querySelector('#creative-compare')?.closest('.panel')?.querySelector('.hint');
-      if(hint) hint.textContent = isCamp ? 'Marque 2+ campanhas na tabela acima' : 'Marque 2+ criativos na tabela acima';
+      if(hint) hint.textContent = 'Marque 2+ ' + nome.muitos + ' na tabela acima';
       renderCreatives(getFiltered(), CMP_ON ? getFiltered('B') : null);
     });
   }
