@@ -1331,7 +1331,21 @@ function atribuicaoDaLinha(r, ehMaisRecenteDoContato){
   }
 
   const p = ehMaisRecenteDoContato ? 'last' : 'first';
-  const campanha = r[p + '_atribution_campaign'] || '';
+  const o = p === 'last' ? 'first' : 'last';
+  let campanha = r[p + '_atribution_campaign'] || '';
+
+  /* O GHL às vezes grava um lado da atribuição com medium, criativo e
+     source mas SEM a campanha — o nome dela ficou só do outro lado. São 389
+     linhas na base, entre elas os criativos "ADn - DGC", que apareciam sem
+     campanha nenhuma no dashboard enquanto o CRM tinha
+     "[DIAGNÓSTICO][CAPTACAO][LEAD][SITE][mql]" no first.
+
+     Só dá para pegar emprestado quando os dois lados descrevem o MESMO
+     anúncio: mesmo medium e mesmo criativo. Em 211 linhas o first é outro
+     anúncio, e aí copiar a campanha colaria o criativo de um na campanha do
+     outro. */
+  if(!campanha && mesmoAnuncioNosDoisLados(r)) campanha = r[o + '_atribution_campaign'] || '';
+
   return {
     medium:   r[p + '_atribution_medium']  || '',
     campanha,
@@ -1339,6 +1353,13 @@ function atribuicaoDaLinha(r, ehMaisRecenteDoContato){
     campanhaParaForms: campanha,
     regimeNovo: true,
   };
+}
+
+/** first e last apontam para o mesmo anúncio? */
+function mesmoAnuncioNosDoisLados(r){
+  const t = (v) => String(v || '').trim();
+  return t(r.first_atribution_medium)  === t(r.last_atribution_medium) &&
+         t(r.first_atribution_content) === t(r.last_atribution_content);
 }
 
 /**
@@ -1404,6 +1425,48 @@ function definirOrigens(brutos){
 
     BRUTOS_POR_LINHA.set(row, brutos[i]);
   });
+
+  deduzirCampanhaPeloCriativo();
+}
+
+/**
+ * Última tentativa de achar a campanha: pelo próprio criativo.
+ *
+ * Sobram linhas em que a atribuição trouxe o criativo mas a campanha não
+ * veio de nenhum dos dois lados. Quando esse MESMO criativo aparece em
+ * outras linhas sempre sob UMA única campanha, o nome dela é dedutível —
+ * é o caso dos "ADn - DGC", que rodaram só em
+ * "[DIAGNÓSTICO][CAPTACAO][LEAD][SITE][mql]". Hoje isso recupera 26 linhas,
+ * e nenhum criativo da base aparece sob duas campanhas, mas a guarda do
+ * `size === 1` fica: no dia em que um criativo for reaproveitado em duas
+ * campanhas, o certo é não adivinhar.
+ *
+ * RODA DEPOIS DA CLASSIFICAÇÃO, DE PROPÓSITO. Preencher a campanha antes
+ * mudaria a origem de linhas cuja regra depende de "não ter campanha" — os
+ * criativos que são link de post do Instagram voltariam a ser Anúncio. O
+ * empréstimo entre first e last, em `atribuicaoDaLinha`, pode influir na
+ * origem porque é o MESMO toque; esta dedução é inferência de uma linha
+ * para outra, e serve só para agrupar a linha sob a campanha dela nas
+ * tabelas.
+ */
+function deduzirCampanhaPeloCriativo(){
+  const campanhasDoCriativo = new Map();
+  for(const row of RAW){
+    const cria = String(row.conteudo || '').trim();
+    const camp = String(row.campaign || '').trim();
+    if(!cria || !camp) continue;
+    if(!campanhasDoCriativo.has(cria)) campanhasDoCriativo.set(cria, new Set());
+    campanhasDoCriativo.get(cria).add(camp);
+  }
+
+  let deduzidas = 0;
+  for(const row of RAW){
+    const cria = String(row.conteudo || '').trim();
+    if(!cria || String(row.campaign || '').trim()) continue;
+    const camps = campanhasDoCriativo.get(cria);
+    if(camps && camps.size === 1){ row.campaign = [...camps][0]; deduzidas++; }
+  }
+  if(deduzidas) console.log('[origem] campanha deduzida pelo criativo em', deduzidas, 'linhas');
 }
 
 function classifySource(atrib){
@@ -1416,6 +1479,23 @@ function classifySource(atrib){
   const camp = String(atrib.campanha || '').trim();
   const cont = String(atrib.conteudo || '').trim();
   if(MEDIUMS_SEM_MIDIA.has(med.toLowerCase()) && !camp && !cont) return 'Orgânico';
+
+  /* Disparo de e-mail para base própria não é mídia paga. */
+  if(/^e-?mail\s*marketing$/i.test(med)) return 'Orgânico';
+
+  /* Manychat é automação de DM. A primeira regra desta função já tratava
+     "Manychat e afins" como orgânico, mas só quando o medium vinha VAZIO —
+     hoje ele vem escrito, e as 306 linhas caíam na captura por exclusão lá
+     embaixo, virando Anúncio. */
+  if(/manychat/i.test(med)) return 'Orgânico';
+
+  /* Criativo que É o link de um post do Instagram: o lead veio do alcance do
+     post, não de um anúncio. Vale com ou sem campanha — as 263 linhas assim
+     usam a convenção de nome "AAAA-MM-DD-<tema>", que é a dos posts, e
+     nenhuma delas tem campanha com FORMS. A maioria já caía em orgânico
+     pela regra de `dm` logo abaixo; sobravam as que vêm com medium
+     "External Form". */
+  if(/instagram\.com/i.test(cont)) return 'Orgânico';
 
   const isForms = String(atrib.campanhaParaForms || '').toUpperCase().includes('FORMS');
   if(/social/i.test(med)) return isForms ? 'Formulário' : 'Orgânico';   // link da bio
